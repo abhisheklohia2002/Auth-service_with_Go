@@ -2,9 +2,13 @@ package services
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"time"
 
+	"example.com/m/internal/config"
 	"example.com/m/internal/models"
 	"example.com/m/internal/repositories"
 	"golang.org/x/crypto/bcrypt"
@@ -33,6 +37,11 @@ func (s *AuthService) UserExistsByEmail(email string) (bool, *models.User, error
 	return s.userRepo.ExistsByEmail(email)
 }
 
+func HashToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
+}
+
 func (s *AuthService) Register(req models.RegisterRequest) (models.AuthResponse, models.User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -43,14 +52,25 @@ func (s *AuthService) Register(req models.RegisterRequest) (models.AuthResponse,
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: string(hashedPassword),
-		Role:     req.Role,
+		Role:     "user",
 	}
 
 	createdUser, err := s.userRepo.Create(&user)
 	if err != nil {
 		return models.AuthResponse{}, models.User{}, err
 	}
+
 	tokens, err := s.generateTokens(&createdUser)
+	if err != nil {
+		return models.AuthResponse{}, models.User{}, err
+	}
+
+	now := time.Now()
+	expiry := now.Add(time.Duration(config.LoadDotenv().RefreshTokenExpiryHours) * time.Hour)
+
+	refreshTokenHash := HashToken(tokens.RefreshToken)
+
+	_, err = s.userRepo.PersistRefreshToken(createdUser.ID, refreshTokenHash, expiry)
 	if err != nil {
 		return models.AuthResponse{}, models.User{}, err
 	}
@@ -64,7 +84,22 @@ func (s *AuthService) Login(user *models.User, password string) (models.AuthResp
 		return models.AuthResponse{}, errors.New("invalid email or password")
 	}
 
-	return s.generateTokens(user)
+	tokens, err := s.generateTokens(user)
+	if err != nil {
+		return models.AuthResponse{}, err
+	}
+
+	now := time.Now()
+	expiry := now.Add(time.Duration(config.LoadDotenv().RefreshTokenExpiryHours) * time.Hour)
+
+	refreshTokenHash := HashToken(tokens.RefreshToken)
+
+	_, err = s.userRepo.PersistRefreshToken(user.ID, refreshTokenHash, expiry)
+	if err != nil {
+		return models.AuthResponse{}, err
+	}
+
+	return tokens, nil
 }
 
 func (s *AuthService) Userslist() ([]models.User, error) {

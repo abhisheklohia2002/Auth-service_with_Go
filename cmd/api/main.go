@@ -24,7 +24,7 @@ func main() {
 		&models.User{},
 		&models.Company{},
 		&models.Department{},
-		&models.RefreshTokenRequest{},
+		&models.RefreshToken{},
 	)
 	if err != nil {
 		panic(err)

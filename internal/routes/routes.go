@@ -19,10 +19,10 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	{
 		auth.POST("/create", authHandler.Register)
 		auth.POST("/login", authHandler.Login)
-		auth.GET("/users", authHandler.UsersList)
-		auth.DELETE("/users/:id", authHandler.DeleteUserById)
+		auth.GET("/users", authMiddleware.IsAuthMiddleware(string(enums.Admin)), authHandler.UsersList)
+		auth.DELETE("/users/:id", authMiddleware.IsAuthMiddleware(string(enums.Admin)), authHandler.DeleteUserById)
 		auth.PUT("/users/:id", authHandler.UpdateUserById)
-
+		
 	}
 	company := api.Group("/company")
 

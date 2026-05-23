@@ -1,18 +1,26 @@
 package models
 
+import "time"
+
 type RegisterRequest struct {
 	Name     string `json:"name" binding:"required"`
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`
-	Role     string `json:"role" binding:"omitempty,oneof=manager admin user"`
+	Role     string `json:"role"`
 }
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required,min=6"`
 }
 
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
+type RefreshToken struct {
+	ID        uint       `json:"id" gorm:"primaryKey"`
+	UserID    uint       `json:"user_id" gorm:"not null;index"`
+	TokenHash string     `json:"-" gorm:"not null;uniqueIndex"`
+	ExpiresAt time.Time  `json:"expires_at" gorm:"not null"`
+	RevokedAt *time.Time `json:"revoked_at" gorm:"index"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 }
 
 type AuthResponse struct {

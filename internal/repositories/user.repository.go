@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"time"
 
 	"example.com/m/internal/models"
 	"gorm.io/gorm"
@@ -93,4 +94,31 @@ func (r *UserRepository) ExistsByEmail(email string) (bool, *models.User, error)
 	}
 
 	return true, &user, nil
+}
+
+func (r *UserRepository) PersistRefreshToken(
+	userID uint,
+	tokenHash string,
+	expiresAt time.Time,
+) (*models.RefreshToken, error) {
+	now := time.Now()
+
+	err := r.db.Model(&models.RefreshToken{}).
+		Where("user_id = ? AND revoked_at IS NULL", userID).
+		Update("revoked_at", &now).Error
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken := models.RefreshToken{
+		UserID:    userID,
+		TokenHash: tokenHash,
+		ExpiresAt: expiresAt,
+	}
+
+	if err := r.db.Create(&refreshToken).Error; err != nil {
+		return nil, err
+	}
+
+	return &refreshToken, nil
 }
