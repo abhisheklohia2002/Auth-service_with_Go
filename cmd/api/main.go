@@ -6,6 +6,7 @@ import (
 	"example.com/m/internal/config"
 	"example.com/m/internal/db"
 	"example.com/m/internal/handlers"
+	"example.com/m/internal/middleware"
 	"example.com/m/internal/models"
 	"example.com/m/internal/repositories"
 	"example.com/m/internal/routes"
@@ -34,6 +35,10 @@ func main() {
 		"/.well-known/jwks.json",
 		"./public/.well-known/jwks.json",
 	)
+	authMiddleware, err := middleware.NewAuthMiddleware(cfg)
+	if err != nil {
+		log.Fatal("failed to initialize auth middleware: ", err)
+	}
 	//auth routes paths
 	userRepo := repositories.NewUserRepository(database)
 	tokenService, err := services.NewTokenService(cfg)
@@ -53,6 +58,6 @@ func main() {
 	departmentService := services.NewDepartmentService(departmentRepo)
 	departmentHandler := handlers.NewDepartmentService(departmentService)
 
-	routes.SetupRoutes(router, authHandler, tokenService, companyHandler, departmentHandler)
+	routes.SetupRoutes(router, authHandler, tokenService, companyHandler, departmentHandler, authMiddleware)
 	router.Run(":" + cfg.Port)
 }

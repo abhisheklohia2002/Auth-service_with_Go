@@ -1,7 +1,9 @@
 package routes
 
 import (
+	"example.com/m/internal/enums"
 	"example.com/m/internal/handlers"
+	"example.com/m/internal/middleware"
 	"example.com/m/internal/services"
 	"github.com/gin-gonic/gin"
 )
@@ -10,12 +12,13 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	tokenService *services.TokenService,
 	companyHandlers *handlers.CompanyHandlers,
 	departmentHandlers *handlers.DepartmentHandlers,
+	authMiddleware *middleware.AuthMiddleware,
 ) {
 	api := router.Group("/api/")
 	auth := api.Group("/auth")
 	{
 		auth.POST("/create", authHandler.Register)
-		auth.POST("/login",authHandler.Login)
+		auth.POST("/login", authHandler.Login)
 		auth.GET("/users", authHandler.UsersList)
 		auth.DELETE("/users/:id", authHandler.DeleteUserById)
 		auth.PUT("/users/:id", authHandler.UpdateUserById)
@@ -27,11 +30,10 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 		company.POST("/", companyHandlers.CompanyCreate)
 	}
 
-	
 	department := api.Group("/departmemt")
 	{
-		department.POST("/", departmentHandlers.CreateDepartment)
-		department.GET("/", departmentHandlers.ListDepartment)
+		department.POST("/", authMiddleware.IsAuthMiddleware(string(enums.Admin)), departmentHandlers.CreateDepartment)
+		department.GET("/", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), departmentHandlers.ListDepartment)
 		department.GET("/:userId", departmentHandlers.UserIdByDepartment)
 	}
 }
