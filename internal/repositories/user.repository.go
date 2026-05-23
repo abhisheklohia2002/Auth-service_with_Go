@@ -1,0 +1,96 @@
+package repositories
+
+import (
+	"context"
+	"errors"
+
+	"example.com/m/internal/models"
+	"gorm.io/gorm"
+)
+
+type UserRepository struct {
+	db *gorm.DB
+}
+
+func NewUserRepository(db *gorm.DB) *UserRepository {
+	return &UserRepository{
+		db: db,
+	}
+}
+
+func (r *UserRepository) Create(user *models.User) (models.User, error) {
+	err := r.db.Create(user).Error
+	if err != nil {
+		return models.User{}, err
+	}
+
+	return *user, nil
+}
+
+func (r *UserRepository) UsersList() ([]models.User, error) {
+	var users []models.User
+
+	err := r.db.Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func (r *UserRepository) DeleteUserById(id int) (models.User, error) {
+	var user models.User
+	err := r.db.Where("id = ?", id).Delete(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return user, err
+	}
+
+	if err != nil {
+		return user, err
+	}
+
+	return user, nil
+}
+
+func (r *UserRepository) UpdateUserById(ctx context.Context, id uint, req models.RegisterRequest) (*models.User, error) {
+	var user models.User
+
+	result := r.db.WithContext(ctx).
+		Model(&models.User{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"name":     req.Name,
+			"email":    req.Email,
+			"password": req.Password,
+		})
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	err := r.db.WithContext(ctx).First(&user, id).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+func (r *UserRepository) ExistsByEmail(email string) (bool, *models.User, error) {
+	var user models.User
+
+	err := r.db.Where("email = ?", email).First(&user).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil, nil
+	}
+
+	if err != nil {
+		return false, nil, err
+	}
+
+	return true, &user, nil
+}
