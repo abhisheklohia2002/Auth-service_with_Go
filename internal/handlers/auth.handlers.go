@@ -11,12 +11,14 @@ import (
 )
 
 type AuthHandler struct {
-	authService *services.AuthService
+	authService  *services.AuthService
+	tokenService *services.TokenService
 }
 
-func NewAuthHandler(authService *services.AuthService) *AuthHandler {
+func NewAuthHandler(authService *services.AuthService, tokenService *services.TokenService) *AuthHandler {
 	return &AuthHandler{
-		authService: authService,
+		authService:  authService,
+		tokenService: tokenService,
 	}
 }
 
@@ -201,4 +203,31 @@ func (h *AuthHandler) UpdateUserById(c *gin.Context) {
 		"user":    user,
 	})
 
+}
+
+func (h *AuthHandler) Self(c *gin.Context) {
+	tokenString, err := c.Cookie("access_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "access token missing",
+		})
+		return
+	}
+
+	claims, err := h.authService.ValidateAccessToken(tokenString)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "invalid or expired access token",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user": gin.H{
+			"id":    claims.ID,
+			"email": claims.Email,
+			"role":  claims.Role,
+		},
+	})
 }

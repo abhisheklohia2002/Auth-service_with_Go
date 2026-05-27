@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"example.com/m/internal/config"
 	"example.com/m/internal/db"
@@ -11,12 +12,10 @@ import (
 	"example.com/m/internal/repositories"
 	"example.com/m/internal/routes"
 	"example.com/m/internal/services"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-func get(c *gin.Context) {
-	c.String(202, "health server")
-}
 func main() {
 
 	database := db.SetupDB()
@@ -35,6 +34,31 @@ func main() {
 		"/.well-known/jwks.json",
 		"./public/.well-known/jwks.json",
 	)
+
+	router.Use(cors.New(cors.Config{
+		AllowOrigins: []string{
+			"http://localhost:5173",
+		},
+		AllowMethods: []string{
+			"GET",
+			"POST",
+			"PUT",
+			"PATCH",
+			"DELETE",
+			"OPTIONS",
+		},
+		AllowHeaders: []string{
+			"Origin",
+			"Content-Type",
+			"Accept",
+			"Authorization",
+		},
+		ExposeHeaders: []string{
+			"Content-Length",
+		},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 	authMiddleware, err := middleware.NewAuthMiddleware(cfg)
 	if err != nil {
 		log.Fatal("failed to initialize auth middleware: ", err)
@@ -46,7 +70,7 @@ func main() {
 		log.Fatal(err)
 	}
 	authService := services.NewAuthService(userRepo, tokenService)
-	authHandler := handlers.NewAuthHandler(authService)
+	authHandler := handlers.NewAuthHandler(authService, tokenService)
 
 	//company routes path
 	companyRepo := repositories.NewCompanyRepository(database)

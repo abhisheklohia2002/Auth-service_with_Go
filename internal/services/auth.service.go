@@ -2,21 +2,39 @@ package services
 
 import (
 	"context"
+	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"net/http"
 	"time"
 
 	"example.com/m/internal/config"
+	"example.com/m/internal/helper"
 	"example.com/m/internal/models"
 	"example.com/m/internal/repositories"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
 	userRepo     *repositories.UserRepository
 	tokenService *TokenService
+}
+type JWK struct {
+	Kty string `json:"kty"`
+	Use string `json:"use"`
+	Kid string `json:"kid"`
+	Alg string `json:"alg"`
+	N   string `json:"n"`
+	E   string `json:"e"`
+}
+type JWKS struct {
+	Keys []JWK `json:"keys"`
 }
 
 func (s *AuthService) UsersList() ([]models.User, error) {
@@ -136,4 +154,104 @@ func (s *AuthService) generateTokens(user *models.User) (models.AuthResponse, er
 		RefreshToken: refreshToken,
 	}, nil
 
+}
+
+func (s *AuthService) ValidateAccessToken(tokenString string) (*models.User, error) {
+	claims := &Claims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
+		if token.Method.Alg() != jwt.SigningMethodRS256.Alg() {
+			return nil, fmt.Errorf("unexpected signing method: %s", token.Method.Alg())
+		}
+		kid, ok := token.Header["kid"].(string)
+		if !ok || kid == "" {
+			return nil, errors.New("missing kid in token header")
+		}
+		publicKey, err := s.tokenService.getPublicKeyFromJWKS(kid)
+		if err != nil {
+			return nil, err
+		}
+
+		return publicKey, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+
+	if !helper.HasAudience(claims.Audience, "access") {
+		return nil, errors.New("invalid audience")
+	}
+	_, user, err := s.userRepo.ExistsByEmail(claims.Email)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+func (s *TokenService) getPublicKeyFromJWKS(kid string) (*rsa.PublicKey, error) {
+
+	resp, err := http.Get(config.LoadDotenv().JWTIssuer)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch JWKS: status %d", resp.StatusCode)
+	}
+
+	var jwks JWKS
+	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
+		return nil, err
+	}
+
+	for _, key := range jwks.Keys {
+		if key.Kid == kid {
+
+			if key.Kty != "RSA" {
+				return nil, errors.New("invalid key type")
+			}
+
+			if key.Alg != "RS256" {
+				return nil, errors.New("invalid key algorithm")
+			}
+
+			return jwkToRSAPublicKey(key)
+		}
+	}
+
+	return nil, errors.New("matching public key not found")
+}
+
+func jwkToRSAPublicKey(jwk JWK) (*rsa.PublicKey, error) {
+	nBytes, err := base64.RawURLEncoding.DecodeString(jwk.N)
+	if err != nil {
+		return nil, err
+	}
+
+	eBytes, err := base64.RawURLEncoding.DecodeString(jwk.E)
+	if err != nil {
+		return nil, err
+	}
+
+	n := new(big.Int).SetBytes(nBytes)
+
+	e := 0
+	for _, b := range eBytes {
+		e = e<<8 + int(b)
+	}
+
+	if e == 0 {
+		return nil, errors.New("invalid exponent")
+	}
+
+	return &rsa.PublicKey{
+		N: n,
+		E: e,
+	}, nil
 }

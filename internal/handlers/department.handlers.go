@@ -66,5 +66,5 @@ func (d *DepartmentHandlers) UserIdByDepartment(c *gin.Context) {
 		"userId":      userId,
 		"message":     "You have got departments by user Id",
 	})
-	return
+	
 }

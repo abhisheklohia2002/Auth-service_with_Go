@@ -15,6 +15,7 @@ type Config struct {
 	PublicKeyPath  string
 
 	JWTIssuer string
+	JWTKEYID  string
 
 	AccessTokenExpiryMins   int
 	RefreshTokenExpiryHours int
@@ -61,8 +62,8 @@ func LoadDotenv() Config {
 		PrivateKeyPath: getEnv("PRIVATE_KEY_PATH", "./openSSL/access_private.pem"),
 		PublicKeyPath:  getEnv("PUBLIC_KEY_PATH", "./openSSL/public.pem"),
 
-		JWTIssuer: getEnv("JWT_ISSUER", "http://localhost:5500"),
-
+		JWTIssuer:               getEnv("JWT_ISSUER", "http://localhost:5500"),
+		JWTKEYID:                getEnv("JWTKEYID", "****"),
 		AccessTokenExpiryMins:   getEnvAsInt("ACCESS_TOKEN_EXPIRY_MINUTES", 60),
 		RefreshTokenExpiryHours: getEnvAsInt("REFRESH_TOKEN_EXPIRY_HOURS", 8760),
 

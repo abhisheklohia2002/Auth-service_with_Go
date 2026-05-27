@@ -22,7 +22,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 		auth.GET("/users", authMiddleware.IsAuthMiddleware(string(enums.Admin)), authHandler.UsersList)
 		auth.DELETE("/users/:id", authMiddleware.IsAuthMiddleware(string(enums.Admin)), authHandler.DeleteUserById)
 		auth.PUT("/users/:id", authHandler.UpdateUserById)
-		
+		auth.GET("self", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.User), string(enums.Manager)), authHandler.Self)
 	}
 	company := api.Group("/company")
 

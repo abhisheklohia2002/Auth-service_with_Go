@@ -13,11 +13,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const jwtKeyID = "main-key-1"
+// const jwtKeyID = "access-key-1"
 
 type TokenService struct {
 	config     config.Config
 	privateKey *rsa.PrivateKey
+	jwksURL    string
+	issuer     string
 }
 
 type Claims struct {
@@ -58,7 +60,7 @@ func (s *TokenService) GenerateAccessToken(userID uint, email string, role strin
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	token.Header["kid"] = jwtKeyID
+	token.Header["kid"] = s.config.JWTKEYID
 
 	return token.SignedString(s.privateKey)
 }
@@ -82,7 +84,7 @@ func (s *TokenService) GenerateRefreshToken(userID uint, email string, role stri
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	token.Header["kid"] = jwtKeyID
+	token.Header["kid"] = s.config.JWTKEYID
 
 	return token.SignedString(s.privateKey)
 }
