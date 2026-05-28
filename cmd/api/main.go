@@ -7,12 +7,18 @@ import (
 	"example.com/m/internal/config"
 	"example.com/m/internal/db"
 	"example.com/m/internal/handlers"
+	handlers_course "example.com/m/internal/handlers/course"
+	handlers_trainingmapping "example.com/m/internal/handlers/training_mapping"
 	"example.com/m/internal/middleware"
 	"example.com/m/internal/models"
 	"example.com/m/internal/repositories"
+	repositories_course "example.com/m/internal/repositories/course"
+	repository_trainingmapping "example.com/m/internal/repositories/training_mapping"
 	"example.com/m/internal/routes"
 	"example.com/m/internal/seeders"
 	"example.com/m/internal/services"
+	services_course "example.com/m/internal/services/course"
+	services_trainingmapping "example.com/m/internal/services/training_mapping"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -44,6 +50,7 @@ func main() {
 	}
 	cfg := config.LoadDotenv()
 	seeders.SeedRoles(database)
+	seeders.SeedTestUsers(database)
 	router := gin.Default()
 	router.StaticFile(
 		"/.well-known/jwks.json",
@@ -88,16 +95,32 @@ func main() {
 	authService := services.NewAuthService(userRepo, tokenService, roleRepo)
 	authHandler := handlers.NewAuthHandler(authService, tokenService)
 
-	//company routes path
+	//company  path
 	companyRepo := repositories.NewCompanyRepository(database)
 	companyService := services.NewCompanyService(companyRepo)
 	companyHandler := handlers.NewCompanyHandler(companyService)
 
-	// department routes paths
+	// department  paths
 	departmentRepo := repositories.NewDepartmentRepository(database)
 	departmentService := services.NewDepartmentService(departmentRepo)
 	departmentHandler := handlers.NewDepartmentService(departmentService)
 
-	routes.SetupRoutes(router, authHandler, tokenService, companyHandler, departmentHandler, authMiddleware)
+	// course  path
+	courseRepo := repositories_course.NewCourseRepository(database)
+	courseService := services_course.NewCourseService(courseRepo)
+	courseHandler := handlers_course.NewCourseHandler(courseService)
+
+	//training Mapping path
+	trainingMappingRepo := repository_trainingmapping.NewTrainingMappingRepository(database)
+
+	trainingMappingService := services_trainingmapping.NewTrainingMappingService(
+		trainingMappingRepo,
+		roleRepo,
+		courseRepo,
+	)
+
+	trainingMappingHandler := handlers_trainingmapping.NewTrainingMappingHandler(trainingMappingService)
+
+	routes.SetupRoutes(router, authHandler, tokenService, companyHandler, departmentHandler, authMiddleware, courseHandler, trainingMappingHandler)
 	router.Run(":" + cfg.Port)
 }
