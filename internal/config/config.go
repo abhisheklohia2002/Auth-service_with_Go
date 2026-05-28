@@ -14,17 +14,19 @@ type Config struct {
 	PrivateKeyPath string
 	PublicKeyPath  string
 
-	JWTIssuer string
-	JWTKEYID  string
+	JWTIssuer            string
+	JWTKEYID             string
+	REFRESH_TOKEN_SECRET string
 
 	AccessTokenExpiryMins   int
 	RefreshTokenExpiryHours int
 
-	Host     string
-	DBPort   string
-	User     string
-	Password string
-	Database string
+	Host      string
+	DBPort    string
+	User      string
+	Password  string
+	Database  string
+	DBSSLMode string
 }
 
 func getEnv(key string, fallback string) string {
@@ -64,13 +66,15 @@ func LoadDotenv() Config {
 
 		JWTIssuer:               getEnv("JWT_ISSUER", "http://localhost:5500"),
 		JWTKEYID:                getEnv("JWTKEYID", "****"),
+		REFRESH_TOKEN_SECRET:    getEnv("REFRESH_TOKEN_SECRET", "******"),
 		AccessTokenExpiryMins:   getEnvAsInt("ACCESS_TOKEN_EXPIRY_MINUTES", 60),
 		RefreshTokenExpiryHours: getEnvAsInt("REFRESH_TOKEN_EXPIRY_HOURS", 8760),
 
-		Host:     getEnv("DB_HOST", "localhost"),
-		DBPort:   getEnv("DB_PORT", "5432"),
-		User:     getEnv("DB_USER", "postgres"),
-		Password: getEnv("DB_PASSWORD", ""),
-		Database: getEnv("DB_NAME", "postgres"),
+		Host:      getEnv("DB_HOST", "*****"),
+		DBPort:    getEnv("DB_PORT", "*****"),
+		User:      getEnv("DB_USER", "*****"),
+		Password:  getEnv("DB_PASSWORD", "*****"),
+		Database:  getEnv("DB_NAME", "******"),
+		DBSSLMode: getEnv("DB_SSLMODE", "disable"),
 	}
 }

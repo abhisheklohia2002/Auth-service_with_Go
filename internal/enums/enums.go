@@ -3,7 +3,7 @@ package enums
 type Role string
 
 const (
-	Admin   Role = "admin"
-	Manager Role = "manager"
-	User    Role = "user"
+	Admin    Role = "admin"
+	Manager  Role = "manager"
+	Employee Role = "employee"
 )

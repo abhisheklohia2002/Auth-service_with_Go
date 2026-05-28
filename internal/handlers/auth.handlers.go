@@ -77,8 +77,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		httpOnly,
 	)
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Register successful",
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "register successful",
 		"user":    user,
 	})
 
@@ -206,28 +206,35 @@ func (h *AuthHandler) UpdateUserById(c *gin.Context) {
 }
 
 func (h *AuthHandler) Self(c *gin.Context) {
-	tokenString, err := c.Cookie("access_token")
-	if err != nil {
+	userID, exists := c.Get("userID")
+	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"message": "access token missing",
+			"message": "user id missing from context",
 		})
 		return
 	}
 
-	claims, err := h.authService.ValidateAccessToken(tokenString)
-	if err != nil {
+	email, exists := c.Get("email")
+	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"message": "invalid or expired access token",
-			"error":   err.Error(),
+			"message": "email missing from context",
+		})
+		return
+	}
+
+	role, exists := c.Get("role")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "role missing from context",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"user": gin.H{
-			"id":    claims.ID,
-			"email": claims.Email,
-			"role":  claims.Role,
+			"id":    userID,
+			"email": email,
+			"role":  role,
 		},
 	})
 }

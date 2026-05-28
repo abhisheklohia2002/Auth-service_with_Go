@@ -11,6 +11,7 @@ import (
 	"example.com/m/internal/models"
 	"example.com/m/internal/repositories"
 	"example.com/m/internal/routes"
+	"example.com/m/internal/seeders"
 	"example.com/m/internal/services"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -20,15 +21,29 @@ func main() {
 
 	database := db.SetupDB()
 	err := database.AutoMigrate(
-		&models.User{},
 		&models.Company{},
 		&models.Department{},
 		&models.RefreshToken{},
+		&models.Role{},
+		&models.User{},
+		&models.Course{},
+		&models.Module{},
+		&models.AssignmentRule{},
+		&models.TrainingMapping{},
+		&models.TrainingAssignment{},
+		&models.AssessmentRule{},
+		&models.Assessment{},
+		&models.AssessmentAttempt{},
+		&models.CertificationRule{},
+		&models.Certification{},
+		&models.CertificateIssue{},
+		&models.Notification{},
 	)
 	if err != nil {
 		panic(err)
 	}
 	cfg := config.LoadDotenv()
+	seeders.SeedRoles(database)
 	router := gin.Default()
 	router.StaticFile(
 		"/.well-known/jwks.json",
@@ -64,12 +79,13 @@ func main() {
 		log.Fatal("failed to initialize auth middleware: ", err)
 	}
 	//auth routes paths
-	userRepo := repositories.NewUserRepository(database)
 	tokenService, err := services.NewTokenService(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-	authService := services.NewAuthService(userRepo, tokenService)
+	userRepo := repositories.NewUserRepository(database)
+	roleRepo := repositories.NewRoleRepository(database)
+	authService := services.NewAuthService(userRepo, tokenService, roleRepo)
 	authHandler := handlers.NewAuthHandler(authService, tokenService)
 
 	//company routes path

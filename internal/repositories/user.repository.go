@@ -122,3 +122,13 @@ func (r *UserRepository) PersistRefreshToken(
 
 	return &refreshToken, nil
 }
+
+func (r *UserRepository) FindByIDWithRole(userID uint) (models.User, error) {
+	var user models.User
+
+	err := r.db.
+		Preload("Role").
+		First(&user, userID).Error
+
+	return user, err
+}
