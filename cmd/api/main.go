@@ -8,16 +8,19 @@ import (
 	"example.com/m/internal/db"
 	"example.com/m/internal/handlers"
 	handlers_course "example.com/m/internal/handlers/course"
+	handlers_trainingassignment "example.com/m/internal/handlers/training_assignment"
 	handlers_trainingmapping "example.com/m/internal/handlers/training_mapping"
 	"example.com/m/internal/middleware"
 	"example.com/m/internal/models"
 	"example.com/m/internal/repositories"
 	repositories_course "example.com/m/internal/repositories/course"
+	repositories_trainingassignment "example.com/m/internal/repositories/training_assignment"
 	repository_trainingmapping "example.com/m/internal/repositories/training_mapping"
 	"example.com/m/internal/routes"
 	"example.com/m/internal/seeders"
 	"example.com/m/internal/services"
 	services_course "example.com/m/internal/services/course"
+	services_trainingassignment "example.com/m/internal/services/training_assignment"
 	services_trainingmapping "example.com/m/internal/services/training_mapping"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -27,8 +30,6 @@ func main() {
 
 	database := db.SetupDB()
 	err := database.AutoMigrate(
-		&models.Company{},
-		&models.Department{},
 		&models.RefreshToken{},
 		&models.Role{},
 		&models.User{},
@@ -95,16 +96,6 @@ func main() {
 	authService := services.NewAuthService(userRepo, tokenService, roleRepo)
 	authHandler := handlers.NewAuthHandler(authService, tokenService)
 
-	//company  path
-	companyRepo := repositories.NewCompanyRepository(database)
-	companyService := services.NewCompanyService(companyRepo)
-	companyHandler := handlers.NewCompanyHandler(companyService)
-
-	// department  paths
-	departmentRepo := repositories.NewDepartmentRepository(database)
-	departmentService := services.NewDepartmentService(departmentRepo)
-	departmentHandler := handlers.NewDepartmentService(departmentService)
-
 	// course  path
 	courseRepo := repositories_course.NewCourseRepository(database)
 	courseService := services_course.NewCourseService(courseRepo)
@@ -119,8 +110,20 @@ func main() {
 		courseRepo,
 	)
 
+	//training Assignments Path
+	trainingAssignmentRepo := repositories_trainingassignment.NewTrainingAssignmentRepository(database)
+
+	trainingAssignmentService := services_trainingassignment.NewTrainingAssignmentService(
+		trainingAssignmentRepo,
+		trainingMappingRepo,
+		userRepo,
+		courseRepo,
+	)
+
+	trainingAssignmentHandler := handlers_trainingassignment.NewTrainingAssignmentHandler(trainingAssignmentService)
+
 	trainingMappingHandler := handlers_trainingmapping.NewTrainingMappingHandler(trainingMappingService)
 
-	routes.SetupRoutes(router, authHandler, tokenService, companyHandler, departmentHandler, authMiddleware, courseHandler, trainingMappingHandler)
+	routes.SetupRoutes(router, authHandler, tokenService, authMiddleware, courseHandler, trainingMappingHandler, trainingAssignmentHandler)
 	router.Run(":" + cfg.Port)
 }

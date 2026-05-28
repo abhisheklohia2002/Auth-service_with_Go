@@ -122,3 +122,15 @@ func (r *TrainingMappingRepository) Update(mapping *models.TrainingMapping) (*mo
 func (r *TrainingMappingRepository) Delete(id uint) error {
 	return r.db.Delete(&models.TrainingMapping{}, id).Error
 }
+
+func (r *TrainingMappingRepository) FindActiveByRoleID(roleID uint) ([]models.TrainingMapping, error) {
+	var mappings []models.TrainingMapping
+
+	err := r.db.
+		Preload("Course").
+		Where("role_id = ? AND active_flag = ?", roleID, true).
+		Find(&mappings).
+		Error
+
+	return mappings, err
+}

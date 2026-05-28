@@ -132,3 +132,22 @@ func (r *UserRepository) FindByIDWithRole(userID uint) (models.User, error) {
 
 	return user, err
 }
+
+func (r *UserRepository) FindByID(id uint) (*models.User, error) {
+	var user models.User
+
+	err := r.db.
+		Preload("Role").
+		First(&user, id).
+		Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
