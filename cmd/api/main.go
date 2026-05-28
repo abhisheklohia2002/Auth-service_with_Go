@@ -7,6 +7,9 @@ import (
 	"example.com/m/internal/config"
 	"example.com/m/internal/db"
 	"example.com/m/internal/handlers"
+	handlers_assessment "example.com/m/internal/handlers/assessment"
+	handlers_assessmentattempt "example.com/m/internal/handlers/assessment_attempt"
+	handlers_assessmentrule "example.com/m/internal/handlers/assessment_rule"
 	handlers_course "example.com/m/internal/handlers/course"
 	handlers_module "example.com/m/internal/handlers/module"
 	handlers_moduleprogress "example.com/m/internal/handlers/module_progress"
@@ -15,6 +18,9 @@ import (
 	"example.com/m/internal/middleware"
 	"example.com/m/internal/models"
 	"example.com/m/internal/repositories"
+	repositories_assessment "example.com/m/internal/repositories/assessment"
+	repositories_assessmentattempt "example.com/m/internal/repositories/assessment_attempt"
+	repositories_assessmentrule "example.com/m/internal/repositories/assessment_rule"
 	repositories_course "example.com/m/internal/repositories/course"
 	repositories_module "example.com/m/internal/repositories/module"
 	repositories_moduleprogress "example.com/m/internal/repositories/module_progress"
@@ -23,6 +29,9 @@ import (
 	"example.com/m/internal/routes"
 	"example.com/m/internal/seeders"
 	"example.com/m/internal/services"
+	services_assessment "example.com/m/internal/services/assessment"
+	services_assessmentattempt "example.com/m/internal/services/assessment_attempt"
+	services_assessmentrule "example.com/m/internal/services/assessment_rule"
 	services_course "example.com/m/internal/services/course"
 	services_module "example.com/m/internal/services/module"
 	services_moduleprogress "example.com/m/internal/services/module_progress"
@@ -147,7 +156,28 @@ func main() {
 
 	trainingMappingHandler := handlers_trainingmapping.NewTrainingMappingHandler(trainingMappingService)
 
-	
-	routes.SetupRoutes(router, authHandler, tokenService, authMiddleware, courseHandler, trainingMappingHandler, trainingAssignmentHandler, moduleProgressHandler,moduleHandler)
+	assessmentRuleRepo := repositories_assessmentrule.NewAssessmentRuleRepository(database)
+	assessmentRepo := repositories_assessment.NewAssessmentRepository(database)
+	assessmentAttemptRepo := repositories_assessmentattempt.NewAssessmentAttemptRepository(database)
+
+	assessmentRuleService := services_assessmentrule.NewAssessmentRuleService(assessmentRuleRepo)
+
+	assessmentService := services_assessment.NewAssessmentService(
+		assessmentRepo,
+		assessmentRuleRepo,
+		courseRepo,
+		moduleRepo,
+	)
+
+	assessmentAttemptService := services_assessmentattempt.NewAssessmentAttemptService(
+		assessmentAttemptRepo,
+		assessmentRepo,
+		userRepo,
+	)
+	assessmentRuleHandler := handlers_assessmentrule.NewAssessmentRuleHandler(assessmentRuleService)
+	assessmentHandler := handlers_assessment.NewAssessmentHandler(assessmentService)
+	assessmentAttemptHandler := handlers_assessmentattempt.NewAssessmentAttemptHandler(assessmentAttemptService)
+
+	routes.SetupRoutes(router, authHandler, tokenService, authMiddleware, courseHandler, trainingMappingHandler, trainingAssignmentHandler, moduleProgressHandler, moduleHandler,assessmentRuleHandler,assessmentHandler,assessmentAttemptHandler)
 	router.Run(":" + cfg.Port)
 }

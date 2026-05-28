@@ -3,6 +3,9 @@ package routes
 import (
 	"example.com/m/internal/enums"
 	"example.com/m/internal/handlers"
+	handlers_assessment "example.com/m/internal/handlers/assessment"
+	handlers_assessmentattempt "example.com/m/internal/handlers/assessment_attempt"
+	handlers_assessmentrule "example.com/m/internal/handlers/assessment_rule"
 	handlers_course "example.com/m/internal/handlers/course"
 	handlers_module "example.com/m/internal/handlers/module"
 	handlers_moduleprogress "example.com/m/internal/handlers/module_progress"
@@ -20,7 +23,10 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	trainingMappingHandler *handlers_trainingmapping.TrainingMappingHandler,
 	trainingAssignmentHandler *handlers_trainingassignment.TrainingAssignmentHandler,
 	moduleProgressHandler *handlers_moduleprogress.ModuleProgressHandler,
-	moduleHandler  *handlers_module.ModuleHandler,
+	moduleHandler *handlers_module.ModuleHandler,
+	assessmentRuleHandler *handlers_assessmentrule.AssessmentRuleHandler,
+	assessmentHandler *handlers_assessment.AssessmentHandler,
+	assessmentAttemptHandler *handlers_assessmentattempt.AssessmentAttemptHandler,
 ) {
 	api := router.Group("/api/")
 	auth := api.Group("/auth")
@@ -173,6 +179,111 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			"/:id",
 			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
 			moduleHandler.Delete,
+		)
+	}
+
+	assessmentRules := api.Group("/assessment-rules")
+	{
+		assessmentRules.POST(
+			"",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assessmentRuleHandler.Create,
+		)
+
+		assessmentRules.GET(
+			"",
+			authMiddleware.IsAuthMiddleware(),
+			assessmentRuleHandler.FindAll,
+		)
+
+		assessmentRules.GET(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(),
+			assessmentRuleHandler.FindByID,
+		)
+
+		assessmentRules.PUT(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assessmentRuleHandler.Update,
+		)
+
+		assessmentRules.DELETE(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
+			assessmentRuleHandler.Delete,
+		)
+	}
+
+	assessments := api.Group("/assessments")
+	{
+		assessments.POST(
+			"",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assessmentHandler.Create,
+		)
+
+		assessments.GET(
+			"",
+			authMiddleware.IsAuthMiddleware(),
+			assessmentHandler.FindAll,
+		)
+
+		assessments.GET(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(),
+			assessmentHandler.FindByID,
+		)
+
+		assessments.GET(
+			"/course/:courseId",
+			authMiddleware.IsAuthMiddleware(),
+			assessmentHandler.FindByCourseID,
+		)
+
+		assessments.GET(
+			"/module/:moduleId",
+			authMiddleware.IsAuthMiddleware(),
+			assessmentHandler.FindByModuleID,
+		)
+
+		assessments.PUT(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assessmentHandler.Update,
+		)
+
+		assessments.DELETE(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
+			assessmentHandler.Delete,
+		)
+	}
+
+	assessmentAttempts := api.Group("/assessment-attempts")
+	{
+		assessmentAttempts.POST(
+			"",
+			authMiddleware.IsAuthMiddleware(),
+			assessmentAttemptHandler.Create,
+		)
+
+		assessmentAttempts.GET(
+			"/user/:userId",
+			authMiddleware.IsAuthMiddleware(),
+			assessmentAttemptHandler.FindByUserID,
+		)
+
+		assessmentAttempts.GET(
+			"/assessment/:assessmentId",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assessmentAttemptHandler.FindByAssessmentID,
+		)
+
+		assessmentAttempts.GET(
+			"/user/:userId/assessment/:assessmentId",
+			authMiddleware.IsAuthMiddleware(),
+			assessmentAttemptHandler.FindByUserAndAssessment,
 		)
 	}
 }
