@@ -86,3 +86,28 @@ func (h *AssessmentAttemptHandler) FindByUserAndAssessment(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "assessment attempts fetched successfully", "data": attempts})
 }
+
+func (h *AssessmentAttemptHandler) Submit(c *gin.Context) {
+	var req dto.SubmitAssessmentAttemptRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "failed to bind request",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	attempt, err := h.assessmentAttemptService.Submit(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "assessment submitted successfully",
+		"data":    attempt,
+	})
+}

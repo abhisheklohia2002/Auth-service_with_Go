@@ -5,10 +5,15 @@ import (
 	"example.com/m/internal/handlers"
 	handlers_assessment "example.com/m/internal/handlers/assessment"
 	handlers_assessmentattempt "example.com/m/internal/handlers/assessment_attempt"
+	handlers_assessmentquestion "example.com/m/internal/handlers/assessment_question"
 	handlers_assessmentrule "example.com/m/internal/handlers/assessment_rule"
+	handlers_certificateIssue "example.com/m/internal/handlers/certificate_issue"
+	handlers_certification "example.com/m/internal/handlers/certification"
+	handlers_certificationrule "example.com/m/internal/handlers/certification_rule"
 	handlers_course "example.com/m/internal/handlers/course"
 	handlers_module "example.com/m/internal/handlers/module"
 	handlers_moduleprogress "example.com/m/internal/handlers/module_progress"
+	handlers_role "example.com/m/internal/handlers/role"
 	handlers_trainingassignment "example.com/m/internal/handlers/training_assignment"
 	handlers_trainingmapping "example.com/m/internal/handlers/training_mapping"
 	"example.com/m/internal/middleware"
@@ -27,6 +32,11 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	assessmentRuleHandler *handlers_assessmentrule.AssessmentRuleHandler,
 	assessmentHandler *handlers_assessment.AssessmentHandler,
 	assessmentAttemptHandler *handlers_assessmentattempt.AssessmentAttemptHandler,
+	certificationRuleHandler *handlers_certificationrule.CertificationRuleHandler,
+	certificationHandler *handlers_certification.CertificationHandler,
+	certificateIssueHandler *handlers_certificateIssue.CertificateIssueHandler,
+	roleHandler *handlers_role.RoleHandler,
+	assessmentQuestionHandler *handlers_assessmentquestion.AssessmentQuestionHandler,
 ) {
 	api := router.Group("/api/")
 	auth := api.Group("/auth")
@@ -284,6 +294,97 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			"/user/:userId/assessment/:assessmentId",
 			authMiddleware.IsAuthMiddleware(),
 			assessmentAttemptHandler.FindByUserAndAssessment,
+		)
+	}
+
+	certificationRules := api.Group("/certification-rules")
+	{
+		certificationRules.POST("", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), certificationRuleHandler.Create)
+		certificationRules.GET("", authMiddleware.IsAuthMiddleware(), certificationRuleHandler.FindAll)
+		certificationRules.GET("/:id", authMiddleware.IsAuthMiddleware(), certificationRuleHandler.FindByID)
+		certificationRules.PUT("/:id", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), certificationRuleHandler.Update)
+		certificationRules.DELETE("/:id", authMiddleware.IsAuthMiddleware(string(enums.Admin)), certificationRuleHandler.Delete)
+	}
+
+	certifications := api.Group("/certifications")
+	{
+		certifications.POST("", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), certificationHandler.Create)
+		certifications.GET("", authMiddleware.IsAuthMiddleware(), certificationHandler.FindAll)
+		certifications.GET("/:id", authMiddleware.IsAuthMiddleware(), certificationHandler.FindByID)
+		certifications.GET("/course/:courseId", authMiddleware.IsAuthMiddleware(), certificationHandler.FindByCourseID)
+		certifications.PUT("/:id", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), certificationHandler.Update)
+		certifications.DELETE("/:id", authMiddleware.IsAuthMiddleware(string(enums.Admin)), certificationHandler.Delete)
+	}
+
+	certificateIssues := api.Group("/certificate-issues")
+	{
+		certificateIssues.POST("/issue", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), certificateIssueHandler.Issue)
+		certificateIssues.GET("/:id", authMiddleware.IsAuthMiddleware(), certificateIssueHandler.FindByID)
+		certificateIssues.GET("/user/:userId", authMiddleware.IsAuthMiddleware(), certificateIssueHandler.FindByUserID)
+		certificateIssues.GET("/:id/download", authMiddleware.IsAuthMiddleware(), certificateIssueHandler.DownloadPDF)
+	}
+	certificates := api.Group("/certificates")
+	{
+		certificates.GET("/verify/:certificateNumber", certificateIssueHandler.VerifyCertificate)
+	}
+
+	roles := api.Group("/roles")
+	{
+		roles.GET(
+			"",
+			authMiddleware.IsAuthMiddleware(),
+			roleHandler.FindAll,
+		)
+
+		roles.GET(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(),
+			roleHandler.FindByID,
+		)
+
+		roles.POST(
+			"",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			roleHandler.Create,
+		)
+
+		roles.PUT(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			roleHandler.Update,
+		)
+
+		roles.DELETE(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
+			roleHandler.Delete,
+		)
+	}
+
+	assessmentQuestions := api.Group("/assessment-questions")
+	{
+		assessmentQuestions.POST(
+			"",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assessmentQuestionHandler.Create,
+		)
+
+		assessmentQuestions.GET(
+			"/assessment/:assessmentId",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assessmentQuestionHandler.FindByAssessmentID,
+		)
+
+		assessmentQuestions.GET(
+			"/assessment/:assessmentId/learner",
+			authMiddleware.IsAuthMiddleware(),
+			assessmentQuestionHandler.FindLearnerQuestions,
+		)
+
+		assessmentQuestions.DELETE(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assessmentQuestionHandler.Delete,
 		)
 	}
 }

@@ -11,6 +11,7 @@ type AssessmentAttempt struct {
 	ResultStatus  string    `gorm:"size:50;not null" json:"result_status"`
 	AttemptedAt   time.Time `json:"attempted_at"`
 
-	Assessment Assessment `gorm:"foreignKey:AssessmentID" json:"assessment,omitempty"`
-	User       User       `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Assessment Assessment                `gorm:"foreignKey:AssessmentID" json:"assessment,omitempty"`
+	User       User                      `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Answers    []AssessmentAttemptAnswer `gorm:"foreignKey:AttemptID" json:"answers,omitempty"`
 }
