@@ -21,12 +21,12 @@ type Config struct {
 	AccessTokenExpiryMins   int
 	RefreshTokenExpiryHours int
 
-	Host      string
-	DBPort    string
-	User      string
-	Password  string
-	Database  string
-	DBSSLMode string
+	HOST     string
+	USER     string
+	PASSWORD string
+	DATABASE string
+	PORT     string
+	DBPORT   string
 }
 
 func getEnv(key string, fallback string) string {
@@ -57,7 +57,11 @@ func LoadDotenv() Config {
 	if err != nil {
 		log.Println("Warning: .env file not found, using environment variables/defaults")
 	}
-
+	host := os.Getenv("DB_HOST")
+	user := os.Getenv("DB_USER")
+	password := os.Getenv("DB_PASSWORD")
+	database := os.Getenv("DB_NAME")
+	DBPort := os.Getenv("DB_PORT")
 	return Config{
 		Port: getEnv("PORT", "5500"),
 
@@ -69,12 +73,10 @@ func LoadDotenv() Config {
 		REFRESH_TOKEN_SECRET:    getEnv("REFRESH_TOKEN_SECRET", "******"),
 		AccessTokenExpiryMins:   getEnvAsInt("ACCESS_TOKEN_EXPIRY_MINUTES", 60),
 		RefreshTokenExpiryHours: getEnvAsInt("REFRESH_TOKEN_EXPIRY_HOURS", 8760),
-
-		Host:      getEnv("DB_HOST", "*****"),
-		DBPort:    getEnv("DB_PORT", "*****"),
-		User:      getEnv("DB_USER", "*****"),
-		Password:  getEnv("DB_PASSWORD", "*****"),
-		Database:  getEnv("DB_NAME", "******"),
-		DBSSLMode: getEnv("DB_SSLMODE", "disable"),
+		USER:                    user,
+		PASSWORD:                password,
+		DATABASE:                database,
+		HOST:                    host,
+		DBPORT:                  DBPort,
 	}
 }

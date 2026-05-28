@@ -5,12 +5,21 @@ import (
 	"log"
 	"time"
 
+	"example.com/m/internal/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func SetupDB() *gorm.DB {
-	dsn := "host=localhost user=postgres password=postgres dbname=gorm_demo port=5432 sslmode=disable TimeZone=Asia/Kolkata"
+	env := config.LoadDotenv()
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Kolkata",
+		env.HOST,
+		env.USER,
+		env.PASSWORD,
+		env.DATABASE,
+		env.DBPORT,
+	)
 
 	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
