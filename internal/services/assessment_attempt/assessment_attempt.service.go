@@ -32,6 +32,7 @@ func NewAssessmentAttemptService(
 	userRepo *repositories.UserRepository,
 	moduleProgressRepo *repositories_moduleprogress.ModuleProgressRepository,
 	trainingAssignmentRepo *repositories_trainingassignment.TrainingAssignmentRepository,
+	questionRepo *repositories_assessmentquestion.AssessmentQuestionRepository,
 	attemptAnswerRepo *repositories_assessmentattemptanswer.AssessmentAttemptAnswerRepository,
 ) *AssessmentAttemptService {
 	return &AssessmentAttemptService{
@@ -41,6 +42,7 @@ func NewAssessmentAttemptService(
 		moduleProgressRepo:     moduleProgressRepo,
 		trainingAssignmentRepo: trainingAssignmentRepo,
 		attemptAnswerRepo:      attemptAnswerRepo,
+		questionRepo:           questionRepo,
 	}
 }
 

@@ -91,7 +91,7 @@ func (h *AssessmentAttemptHandler) Submit(c *gin.Context) {
 	var req dto.SubmitAssessmentAttemptRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(400, gin.H{
 			"error":   "failed to bind request",
 			"details": err.Error(),
 		})
@@ -100,13 +100,14 @@ func (h *AssessmentAttemptHandler) Submit(c *gin.Context) {
 
 	attempt, err := h.assessmentAttemptService.Submit(req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+		c.JSON(400, gin.H{
+			"error":   "assessment submit failed",
+			"details": err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	c.JSON(201, gin.H{
 		"message": "assessment submitted successfully",
 		"data":    attempt,
 	})

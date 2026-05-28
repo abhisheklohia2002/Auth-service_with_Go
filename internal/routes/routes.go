@@ -38,12 +38,12 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	roleHandler *handlers_role.RoleHandler,
 	assessmentQuestionHandler *handlers_assessmentquestion.AssessmentQuestionHandler,
 ) {
-	api := router.Group("/api/")
+	api := router.Group("/api")
 	auth := api.Group("/auth")
 	{
 		auth.POST("/create", authHandler.Register)
 		auth.POST("/login", authHandler.Login)
-		auth.GET("/users", authMiddleware.IsAuthMiddleware(string(enums.Admin)), authHandler.UsersList)
+		auth.GET("/users", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), authHandler.UsersList)
 		auth.DELETE("/users/:id", authMiddleware.IsAuthMiddleware(string(enums.Admin)), authHandler.DeleteUserById)
 		auth.PUT("/users/:id", authHandler.UpdateUserById)
 		auth.GET("self", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Employee), string(enums.Manager)), authHandler.Self)
@@ -278,6 +278,11 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			assessmentAttemptHandler.Create,
 		)
 
+		assessmentAttempts.POST(
+			"/submit",
+			authMiddleware.IsAuthMiddleware(),
+			assessmentAttemptHandler.Submit,
+		)
 		assessmentAttempts.GET(
 			"/user/:userId",
 			authMiddleware.IsAuthMiddleware(),
@@ -295,6 +300,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			authMiddleware.IsAuthMiddleware(),
 			assessmentAttemptHandler.FindByUserAndAssessment,
 		)
+
 	}
 
 	certificationRules := api.Group("/certification-rules")
