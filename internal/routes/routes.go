@@ -4,6 +4,8 @@ import (
 	"example.com/m/internal/enums"
 	"example.com/m/internal/handlers"
 	handlers_course "example.com/m/internal/handlers/course"
+	handlers_module "example.com/m/internal/handlers/module"
+	handlers_moduleprogress "example.com/m/internal/handlers/module_progress"
 	handlers_trainingassignment "example.com/m/internal/handlers/training_assignment"
 	handlers_trainingmapping "example.com/m/internal/handlers/training_mapping"
 	"example.com/m/internal/middleware"
@@ -17,6 +19,8 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	courseHandler *handlers_course.CourseHandler,
 	trainingMappingHandler *handlers_trainingmapping.TrainingMappingHandler,
 	trainingAssignmentHandler *handlers_trainingassignment.TrainingAssignmentHandler,
+	moduleProgressHandler *handlers_moduleprogress.ModuleProgressHandler,
+	moduleHandler  *handlers_module.ModuleHandler,
 ) {
 	api := router.Group("/api/")
 	auth := api.Group("/auth")
@@ -115,6 +119,60 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			"/:id",
 			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
 			trainingAssignmentHandler.Delete,
+		)
+	}
+
+	moduleProgress := api.Group("/module-progress")
+	{
+		moduleProgress.GET(
+			"/assignment/:assignmentId",
+			authMiddleware.IsAuthMiddleware(),
+			moduleProgressHandler.FindByAssignmentID,
+		)
+
+		moduleProgress.PATCH(
+			"/:id/status",
+			authMiddleware.IsAuthMiddleware(),
+			moduleProgressHandler.UpdateStatus,
+		)
+	}
+
+	modules := api.Group("/modules")
+	{
+		modules.POST(
+			"",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			moduleHandler.Create,
+		)
+
+		modules.GET(
+			"",
+			authMiddleware.IsAuthMiddleware(),
+			moduleHandler.FindAll,
+		)
+
+		modules.GET(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(),
+			moduleHandler.FindByID,
+		)
+
+		modules.GET(
+			"/course/:courseId",
+			authMiddleware.IsAuthMiddleware(),
+			moduleHandler.FindByCourseID,
+		)
+
+		modules.PUT(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			moduleHandler.Update,
+		)
+
+		modules.DELETE(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
+			moduleHandler.Delete,
 		)
 	}
 }

@@ -9,6 +9,7 @@ type Module struct {
 	DueDays           int    `gorm:"default:0" json:"due_days"`
 	IsActive          bool   `gorm:"default:true" json:"is_active"`
 
-	Course      Course       `gorm:"foreignKey:CourseID" json:"course,omitempty"`
-	Assessments []Assessment `gorm:"foreignKey:ModuleID" json:"assessments,omitempty"`
+	Course           Course           `gorm:"foreignKey:CourseID" json:"course,omitempty"`
+	Assessments      []Assessment     `gorm:"foreignKey:ModuleID" json:"assessments,omitempty"`
+	ModuleProgresses []ModuleProgress `gorm:"foreignKey:ModuleID" json:"module_progresses,omitempty"`
 }

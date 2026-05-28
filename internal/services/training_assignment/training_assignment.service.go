@@ -2,12 +2,15 @@ package services_trainingassignment
 
 import (
 	"errors"
+	"log"
 	"time"
 
 	"example.com/m/internal/dto"
 	"example.com/m/internal/models"
 	"example.com/m/internal/repositories"
 	repositories_course "example.com/m/internal/repositories/course"
+	repositories_module "example.com/m/internal/repositories/module"
+	repositories_moduleprogress "example.com/m/internal/repositories/module_progress"
 	repositories_trainingassignment "example.com/m/internal/repositories/training_assignment"
 	repository_trainingmapping "example.com/m/internal/repositories/training_mapping"
 )
@@ -17,6 +20,8 @@ type TrainingAssignmentService struct {
 	trainingMappingRepo    *repository_trainingmapping.TrainingMappingRepository
 	userRepo               *repositories.UserRepository
 	courseRepo             *repositories_course.CourseRepository
+	moduleRepo             *repositories_module.ModuleRepository
+	moduleProgressRepo     *repositories_moduleprogress.ModuleProgressRepository
 }
 
 func NewTrainingAssignmentService(
@@ -24,13 +29,47 @@ func NewTrainingAssignmentService(
 	trainingMappingRepo *repository_trainingmapping.TrainingMappingRepository,
 	userRepo *repositories.UserRepository,
 	courseRepo *repositories_course.CourseRepository,
+	moduleRepo *repositories_module.ModuleRepository,
+	moduleProgressRepo *repositories_moduleprogress.ModuleProgressRepository,
 ) *TrainingAssignmentService {
 	return &TrainingAssignmentService{
 		trainingAssignmentRepo: trainingAssignmentRepo,
 		trainingMappingRepo:    trainingMappingRepo,
 		userRepo:               userRepo,
 		courseRepo:             courseRepo,
+		moduleRepo:             moduleRepo,
+		moduleProgressRepo:     moduleProgressRepo,
 	}
+}
+
+func (s *TrainingAssignmentService) createModuleProgressForAssignment(assignment *models.TrainingAssignment) error {
+	modules, err := s.moduleRepo.FindByCourseID(assignment.CourseID)
+	if err != nil {
+		return err
+	}
+
+	progresses := make([]models.ModuleProgress, 0)
+
+	for _, module := range modules {
+		log.Println("module found:", module.ID, module.ModuleTitle)
+		exists, err := s.moduleProgressRepo.ExistsByAssignmentAndModule(assignment.ID, module.ID)
+		if err != nil {
+			return err
+		}
+
+		if exists {
+			continue
+		}
+
+		progresses = append(progresses, models.ModuleProgress{
+			AssignmentID: assignment.ID,
+			ModuleID:     module.ID,
+			UserID:       assignment.UserID,
+			Status:       "pending",
+		})
+	}
+	log.Println("module progress rows to create:", len(progresses))
+	return s.moduleProgressRepo.BulkCreate(progresses)
 }
 
 func (s *TrainingAssignmentService) CreateManual(req dto.CreateTrainingAssignmentRequest) (*models.TrainingAssignment, error) {
@@ -82,7 +121,16 @@ func (s *TrainingAssignmentService) CreateManual(req dto.CreateTrainingAssignmen
 		Status:           "assigned",
 	}
 
-	return s.trainingAssignmentRepo.Create(&assignment)
+	created, err := s.trainingAssignmentRepo.Create(&assignment)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.createModuleProgressForAssignment(created); err != nil {
+		return nil, err
+	}
+
+	return created, nil
 }
 
 func (s *TrainingAssignmentService) AutoAssignByUserRole(req dto.AutoAssignTrainingRequest) ([]models.TrainingAssignment, error) {
@@ -135,6 +183,10 @@ func (s *TrainingAssignmentService) AutoAssignByUserRole(req dto.AutoAssignTrain
 
 		created, err := s.trainingAssignmentRepo.Create(&assignment)
 		if err != nil {
+			return nil, err
+		}
+
+		if err := s.createModuleProgressForAssignment(created); err != nil {
 			return nil, err
 		}
 

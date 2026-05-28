@@ -20,5 +20,6 @@ type TrainingAssignment struct {
 	AssignedByUser User   `gorm:"foreignKey:AssignedByUserID" json:"assigned_by_user,omitempty"`
 
 	Notifications     []Notification     `gorm:"foreignKey:AssignmentID" json:"notifications,omitempty"`
-	CertificateIssues  []CertificateIssue `gorm:"foreignKey:TrainingAssignmentID" json:"certificate_issues,omitempty"`
+	CertificateIssues []CertificateIssue `gorm:"foreignKey:TrainingAssignmentID" json:"certificate_issues,omitempty"`
+	ModuleProgresses  []ModuleProgress   `gorm:"foreignKey:AssignmentID" json:"module_progresses,omitempty"`
 }
