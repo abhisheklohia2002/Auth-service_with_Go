@@ -9,23 +9,31 @@ import (
 	"example.com/m/internal/repositories"
 	repositories_assessment "example.com/m/internal/repositories/assessment"
 	repositories_assessmentattempt "example.com/m/internal/repositories/assessment_attempt"
+	repositories_moduleprogress "example.com/m/internal/repositories/module_progress"
+	repositories_trainingassignment "example.com/m/internal/repositories/training_assignment"
 )
 
 type AssessmentAttemptService struct {
-	assessmentAttemptRepo *repositories_assessmentattempt.AssessmentAttemptRepository
-	assessmentRepo        *repositories_assessment.AssessmentRepository
-	userRepo              *repositories.UserRepository
+	assessmentAttemptRepo  *repositories_assessmentattempt.AssessmentAttemptRepository
+	assessmentRepo         *repositories_assessment.AssessmentRepository
+	userRepo               *repositories.UserRepository
+	moduleProgressRepo     *repositories_moduleprogress.ModuleProgressRepository
+	trainingAssignmentRepo *repositories_trainingassignment.TrainingAssignmentRepository
 }
 
 func NewAssessmentAttemptService(
 	assessmentAttemptRepo *repositories_assessmentattempt.AssessmentAttemptRepository,
 	assessmentRepo *repositories_assessment.AssessmentRepository,
 	userRepo *repositories.UserRepository,
+	moduleProgressRepo *repositories_moduleprogress.ModuleProgressRepository,
+	trainingAssignmentRepo *repositories_trainingassignment.TrainingAssignmentRepository,
 ) *AssessmentAttemptService {
 	return &AssessmentAttemptService{
-		assessmentAttemptRepo: assessmentAttemptRepo,
-		assessmentRepo:        assessmentRepo,
-		userRepo:              userRepo,
+		assessmentAttemptRepo:  assessmentAttemptRepo,
+		assessmentRepo:         assessmentRepo,
+		userRepo:               userRepo,
+		moduleProgressRepo:     moduleProgressRepo,
+		trainingAssignmentRepo: trainingAssignmentRepo,
 	}
 }
 
@@ -102,7 +110,16 @@ func (s *AssessmentAttemptService) Create(req dto.CreateAssessmentAttemptRequest
 		AttemptedAt:   time.Now(),
 	}
 
-	return s.assessmentAttemptRepo.Create(&attempt)
+	createdAttempt, err := s.assessmentAttemptRepo.Create(&attempt)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.completeModuleProgressIfPassed(req.UserID, assessment, resultStatus); err != nil {
+		return nil, err
+	}
+
+	return createdAttempt, nil
 }
 
 func (s *AssessmentAttemptService) FindByUserID(userID uint) ([]models.AssessmentAttempt, error) {
@@ -147,4 +164,79 @@ func (s *AssessmentAttemptService) FindByUserAndAssessment(userID uint, assessme
 	}
 
 	return s.assessmentAttemptRepo.FindByUserAndAssessment(userID, assessmentID)
+}
+
+func (s *AssessmentAttemptService) completeModuleProgressIfPassed(
+	userID uint,
+	assessment *models.Assessment,
+	resultStatus string,
+) error {
+	if resultStatus != "passed" {
+		return nil
+	}
+
+	if assessment.ModuleID == nil {
+		return nil
+	}
+
+	progress, err := s.moduleProgressRepo.FindByUserAndModule(userID, *assessment.ModuleID)
+	if err != nil {
+		return err
+	}
+
+	if progress == nil {
+		return nil
+	}
+
+	now := time.Now()
+
+	if progress.StartedAt == nil {
+		progress.StartedAt = &now
+	}
+
+	progress.Status = "completed"
+	progress.CompletedAt = &now
+
+	_, err = s.moduleProgressRepo.Update(progress)
+	if err != nil {
+		return err
+	}
+
+	return s.updateAssignmentIfAllModulesCompleted(progress.AssignmentID)
+}
+
+func (s *AssessmentAttemptService) updateAssignmentIfAllModulesCompleted(assignmentID uint) error {
+	total, err := s.moduleProgressRepo.CountByAssignment(assignmentID)
+	if err != nil {
+		return err
+	}
+
+	if total == 0 {
+		return nil
+	}
+
+	completed, err := s.moduleProgressRepo.CountByAssignmentAndStatus(assignmentID, "completed")
+	if err != nil {
+		return err
+	}
+
+	if completed != total {
+		return nil
+	}
+
+	assignment, err := s.trainingAssignmentRepo.FindByID(assignmentID)
+	if err != nil {
+		return err
+	}
+
+	if assignment == nil {
+		return errors.New("training assignment not found")
+	}
+
+	now := time.Now()
+	assignment.Status = "completed"
+	assignment.CompletionDate = &now
+
+	_, err = s.trainingAssignmentRepo.Update(assignment)
+	return err
 }

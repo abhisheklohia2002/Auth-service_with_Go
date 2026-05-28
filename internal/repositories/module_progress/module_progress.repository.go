@@ -45,7 +45,7 @@ func (r *ModuleProgressRepository) BulkCreate(progresses []models.ModuleProgress
 
 func (r *ModuleProgressRepository) FindByAssignmentID(assignmentID uint) ([]models.ModuleProgress, error) {
 	var progresses []models.ModuleProgress
-	
+
 	err := r.db.
 		Preload("Module").
 		Where("assignment_id = ?", assignmentID).
@@ -129,4 +129,26 @@ func (r *ModuleProgressRepository) ExistsByAssignmentAndModule(assignmentID uint
 		Error
 
 	return count > 0, err
+}
+
+func (r *ModuleProgressRepository) FindByUserAndModule(userID uint, moduleID uint) (*models.ModuleProgress, error) {
+	var progress models.ModuleProgress
+
+	err := r.db.
+		Preload("Assignment").
+		Preload("Module").
+		Where("user_id = ? AND module_id = ?", userID, moduleID).
+		Order("id DESC").
+		First(&progress).
+		Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &progress, nil
 }

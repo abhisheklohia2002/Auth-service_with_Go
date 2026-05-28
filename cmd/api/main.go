@@ -173,11 +173,13 @@ func main() {
 		assessmentAttemptRepo,
 		assessmentRepo,
 		userRepo,
+		moduleProgressRepo,
+		trainingAssignmentRepo,
 	)
 	assessmentRuleHandler := handlers_assessmentrule.NewAssessmentRuleHandler(assessmentRuleService)
 	assessmentHandler := handlers_assessment.NewAssessmentHandler(assessmentService)
 	assessmentAttemptHandler := handlers_assessmentattempt.NewAssessmentAttemptHandler(assessmentAttemptService)
 
-	routes.SetupRoutes(router, authHandler, tokenService, authMiddleware, courseHandler, trainingMappingHandler, trainingAssignmentHandler, moduleProgressHandler, moduleHandler,assessmentRuleHandler,assessmentHandler,assessmentAttemptHandler)
+	routes.SetupRoutes(router, authHandler, tokenService, authMiddleware, courseHandler, trainingMappingHandler, trainingAssignmentHandler, moduleProgressHandler, moduleHandler, assessmentRuleHandler, assessmentHandler, assessmentAttemptHandler)
 	router.Run(":" + cfg.Port)
 }
