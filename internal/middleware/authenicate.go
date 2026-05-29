@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"errors"
 	"net/http"
+	"os"
 
 	"example.com/m/internal/common"
 	"example.com/m/internal/config"
@@ -17,7 +18,8 @@ type AuthMiddleware struct {
 }
 
 func NewAuthMiddleware(cfg config.Config) (*AuthMiddleware, error) {
-	publicKey, err := common.LoadRSAPublicKeyFromEnv(cfg.JWT_PUBLIC_KEY)
+	env_JWT_PUBLIC_KEY := os.Getenv("JWT_PUBLIC_KEY")
+	publicKey, err := common.LoadRSAPublicKeyFromEnv(env_JWT_PUBLIC_KEY)
 	if err != nil {
 		return nil, err
 	}

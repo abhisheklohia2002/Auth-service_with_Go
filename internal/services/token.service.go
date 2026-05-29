@@ -31,7 +31,8 @@ type Claims struct {
 }
 
 func NewTokenService(cfg config.Config) (*TokenService, error) {
-	privateKey, err := common.LoadRSAPrivateKeyFromEnv(cfg.JWT_PRIVATE_KEY)
+	env_JWT_PRIVATE_KEY := os.Getenv("JWT_PRIVATE_KEY")
+	privateKey, err := common.LoadRSAPrivateKeyFromEnv(env_JWT_PRIVATE_KEY)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load private key: %w", err)
 	}
