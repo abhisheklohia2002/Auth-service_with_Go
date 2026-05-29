@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"example.com/m/internal/models"
@@ -54,7 +55,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	oneHour := 60 * 60
 	oneYear := 365 * 24 * 60 * 60
 
-	secure := false
+	secure := os.Getenv("GIN_MODE") == "release"
 	httpOnly := true
 	c.SetSameSite(http.SameSiteNoneMode)
 
@@ -121,9 +122,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	oneHour := 60 * 60
 	oneYear := 365 * 24 * 60 * 60
 
-	secure := false
+	secure := os.Getenv("GIN_MODE") == "release"
 	httpOnly := true
-	
+
 	c.SetSameSite(http.SameSiteNoneMode)
 
 	c.SetCookie(
