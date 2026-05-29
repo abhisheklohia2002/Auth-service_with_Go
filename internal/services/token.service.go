@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"example.com/m/internal/common"
 	"example.com/m/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -30,7 +31,7 @@ type Claims struct {
 }
 
 func NewTokenService(cfg config.Config) (*TokenService, error) {
-	privateKey, err := LoadRSAPrivateKey(cfg.JWT_PRIVATE_KEY)
+	privateKey, err := common.LoadRSAPrivateKeyFromEnv(cfg.JWT_PRIVATE_KEY)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load private key: %w", err)
 	}
