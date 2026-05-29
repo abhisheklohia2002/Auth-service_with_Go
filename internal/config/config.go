@@ -27,6 +27,10 @@ type Config struct {
 	DATABASE string
 	PORT     string
 	DBPORT   string
+
+	DATABASE_URL    string
+	JWT_PRIVATE_KEY string
+	JWT_PUBLIC_KEY  string
 }
 
 func getEnv(key string, fallback string) string {
@@ -62,6 +66,10 @@ func LoadDotenv() Config {
 	password := os.Getenv("DB_PASSWORD")
 	database := os.Getenv("DB_NAME")
 	DBPort := os.Getenv("DB_PORT")
+	DATABASE_URL := os.Getenv("DATABASE_URL")
+	JWT_PRIVATE_KEY := os.Getenv("JWT_PRIVATE_KEY")
+	JWT_PUBLIC_KEY := os.Getenv("JWT_PUBLIC_KEY")
+
 	return Config{
 		Port: getEnv("PORT", "5500"),
 
@@ -78,5 +86,8 @@ func LoadDotenv() Config {
 		DATABASE:                database,
 		HOST:                    host,
 		DBPORT:                  DBPort,
+		DATABASE_URL:            DATABASE_URL,
+		JWT_PUBLIC_KEY:          JWT_PUBLIC_KEY,
+		JWT_PRIVATE_KEY:         JWT_PRIVATE_KEY,
 	}
 }

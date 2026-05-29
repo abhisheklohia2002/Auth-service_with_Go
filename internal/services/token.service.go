@@ -30,7 +30,7 @@ type Claims struct {
 }
 
 func NewTokenService(cfg config.Config) (*TokenService, error) {
-	privateKey, err := LoadRSAPrivateKey(cfg.PrivateKeyPath)
+	privateKey, err := LoadRSAPrivateKey(cfg.JWT_PRIVATE_KEY)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load private key: %w", err)
 	}
