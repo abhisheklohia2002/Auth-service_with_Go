@@ -17,7 +17,7 @@ type AuthMiddleware struct {
 }
 
 func NewAuthMiddleware(cfg config.Config) (*AuthMiddleware, error) {
-	publicKey, err := common.LoadRSAPublicKeyFromEnv(cfg.PublicKeyPath)
+	publicKey, err := common.LoadRSAPublicKeyFromEnv(cfg.JWT_PUBLIC_KEY)
 	if err != nil {
 		return nil, err
 	}
