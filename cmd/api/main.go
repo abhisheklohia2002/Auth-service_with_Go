@@ -115,11 +115,13 @@ func main() {
 		"./public/.well-known/jwks.json",
 	)
 
+	allowedOrigins := []string{"http://localhost:5173"}
+
+	if frontendURL := os.Getenv("FRONTEND_URL"); frontendURL != "" {
+		allowedOrigins = append(allowedOrigins, frontendURL)
+	}
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{
-			"http://localhost:5173",
-			os.Getenv("FRONTEND_URL"),
-		},
+		AllowOrigins: allowedOrigins,
 		AllowMethods: []string{
 			"GET",
 			"POST",
