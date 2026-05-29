@@ -56,6 +56,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	secure := false
 	httpOnly := true
+	c.SetSameSite(http.SameSiteNoneMode)
 
 	c.SetCookie(
 		"access_token",
@@ -122,6 +123,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	secure := false
 	httpOnly := true
+	
+	c.SetSameSite(http.SameSiteNoneMode)
 
 	c.SetCookie(
 		"access_token",
