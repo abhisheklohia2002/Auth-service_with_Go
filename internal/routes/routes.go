@@ -324,7 +324,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 
 	certificateIssues := api.Group("/certificate-issues")
 	{
-		certificateIssues.POST("/issue", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), certificateIssueHandler.Issue)
+		certificateIssues.POST("/issue", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager), string(enums.Employee)), certificateIssueHandler.Issue)
 		certificateIssues.GET("/:id", authMiddleware.IsAuthMiddleware(), certificateIssueHandler.FindByID)
 		certificateIssues.GET("/user/:userId", authMiddleware.IsAuthMiddleware(), certificateIssueHandler.FindByUserID)
 		certificateIssues.GET("/:id/download", authMiddleware.IsAuthMiddleware(), certificateIssueHandler.DownloadPDF)
