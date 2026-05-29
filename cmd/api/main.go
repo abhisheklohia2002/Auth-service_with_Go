@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"example.com/m/internal/config"
@@ -117,6 +118,7 @@ func main() {
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
 			"http://localhost:5173",
+			os.Getenv("FRONTEND_URL"),
 		},
 		AllowMethods: []string{
 			"GET",
