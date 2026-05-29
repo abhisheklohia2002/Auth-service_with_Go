@@ -7,6 +7,7 @@ import (
 	handlers_assessmentattempt "example.com/m/internal/handlers/assessment_attempt"
 	handlers_assessmentquestion "example.com/m/internal/handlers/assessment_question"
 	handlers_assessmentrule "example.com/m/internal/handlers/assessment_rule"
+	handlers_assignments "example.com/m/internal/handlers/assignments"
 	handlers_certificateIssue "example.com/m/internal/handlers/certificate_issue"
 	handlers_certification "example.com/m/internal/handlers/certification"
 	handlers_certificationrule "example.com/m/internal/handlers/certification_rule"
@@ -37,6 +38,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	certificateIssueHandler *handlers_certificateIssue.CertificateIssueHandler,
 	roleHandler *handlers_role.RoleHandler,
 	assessmentQuestionHandler *handlers_assessmentquestion.AssessmentQuestionHandler,
+	assignmentRuleHandler *handlers_assignments.AssignmentRuleHandler,
 ) {
 	api := router.Group("/api")
 	auth := api.Group("/auth")
@@ -391,6 +393,39 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			"/:id",
 			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
 			assessmentQuestionHandler.Delete,
+		)
+	}
+
+	assignmentRules := api.Group("/assignment-rules")
+	{
+		assignmentRules.POST(
+			"",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assignmentRuleHandler.Create,
+		)
+
+		assignmentRules.GET(
+			"",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assignmentRuleHandler.FindAll,
+		)
+
+		assignmentRules.GET(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assignmentRuleHandler.FindByID,
+		)
+
+		assignmentRules.PUT(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assignmentRuleHandler.Update,
+		)
+
+		assignmentRules.DELETE(
+			"/:id",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
+			assignmentRuleHandler.Delete,
 		)
 	}
 }

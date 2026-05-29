@@ -12,6 +12,7 @@ import (
 	handlers_assessmentattempt "example.com/m/internal/handlers/assessment_attempt"
 	handlers_assessmentquestion "example.com/m/internal/handlers/assessment_question"
 	handlers_assessmentrule "example.com/m/internal/handlers/assessment_rule"
+	handlers_assignments "example.com/m/internal/handlers/assignments"
 	handlers_certificateIssue "example.com/m/internal/handlers/certificate_issue"
 	handlers_certification "example.com/m/internal/handlers/certification"
 	handlers_certificationrule "example.com/m/internal/handlers/certification_rule"
@@ -33,6 +34,7 @@ import (
 	repositories_assessmentquestion "example.com/m/internal/repositories/assessment_question"
 	repositories_assessmentquestionoption "example.com/m/internal/repositories/assessment_question_option"
 	repositories_assessmentrule "example.com/m/internal/repositories/assessment_rule"
+	repositories_assignments "example.com/m/internal/repositories/assignments"
 	repositories_certificateIssue "example.com/m/internal/repositories/certificate_issue"
 	repositories_certification "example.com/m/internal/repositories/certification"
 	repositories_certificationrule "example.com/m/internal/repositories/certification_rule"
@@ -50,6 +52,7 @@ import (
 	services_assessmentattempt "example.com/m/internal/services/assessment_attempt"
 	services_assessmentquestion "example.com/m/internal/services/assessment_question"
 	services_assessmentrule "example.com/m/internal/services/assessment_rule"
+	services_assignments "example.com/m/internal/services/assignments"
 	services_certificateissue "example.com/m/internal/services/certificate_issue"
 	services_certificatepdf "example.com/m/internal/services/certificate_pdf"
 	services_certification "example.com/m/internal/services/certification"
@@ -156,6 +159,14 @@ func main() {
 	trainingAssignmentRepo := repositories_trainingassignment.NewTrainingAssignmentRepository(database)
 	moduleProgressRepo := repositories_moduleprogress.NewModuleProgressRepository(database)
 
+	assignmentRuleRepo := repositories_assignments.NewAssignmentRuleRepository(database)
+
+	assignmentRuleService := services_assignments.NewAssignmentRuleService(
+		assignmentRuleRepo,
+		roleRepo,
+	)
+
+	assignmentRuleHandler := handlers_assignments.NewAssignmentRuleHandler(assignmentRuleService)
 	assessmentRuleRepo := repositories_assessmentrule.NewAssessmentRuleRepository(database)
 	assessmentRepo := repositories_assessment.NewAssessmentRepository(database)
 	assessmentQuestionRepo := repositories_assessmentquestion.NewAssessmentQuestionRepository(database)
@@ -308,6 +319,7 @@ func main() {
 		certificateIssueHandler,
 		roleHandler,
 		assessmentQuestionHandler,
+		assignmentRuleHandler,
 	)
 
 	router.GET("/health", func(c *gin.Context) {
