@@ -310,6 +310,11 @@ func main() {
 		assessmentQuestionHandler,
 	)
 
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "ok",
+		})
+	})
 	log.Println("server running on port:", cfg.Port)
 
 	if err := router.Run(":" + cfg.Port); err != nil {
