@@ -301,6 +301,15 @@ func main() {
 		certificateIssueService,
 	)
 
+	router.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "LMS backend is running",
+		})
+	})
+
+	router.HEAD("/", func(c *gin.Context) {
+		c.Status(200)
+	})
 	routes.SetupRoutes(
 		router,
 		authHandler,
@@ -327,6 +336,7 @@ func main() {
 			"status": "ok",
 		})
 	})
+
 	log.Println("server running on port:", cfg.Port)
 
 	if err := router.Run(":" + cfg.Port); err != nil {
