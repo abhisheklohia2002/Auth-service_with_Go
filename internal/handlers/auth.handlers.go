@@ -64,7 +64,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		tokens.AccessToken,
 		oneHour,
 		"/",
-		"",
+		"http://localhost:8001",
 		secure,
 		httpOnly,
 	)
@@ -74,7 +74,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		tokens.RefreshToken,
 		oneYear,
 		"/",
-		"",
+		"http://localhost:8001",
 		secure,
 		httpOnly,
 	)
@@ -243,8 +243,6 @@ func (h *AuthHandler) Self(c *gin.Context) {
 	})
 }
 
-
-
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil || refreshToken == "" {
@@ -298,7 +296,6 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		"user":    user,
 	})
 }
-
 
 func (h *AuthHandler) Logout(c *gin.Context) {
 	refreshToken, err := c.Cookie("refresh_token")
