@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"example.com/m/internal/models"
@@ -54,14 +55,29 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	oneHour := 60 * 60
 	oneYear := 365 * 24 * 60 * 60
 
-	// secure := os.Getenv("GIN_MODE") == "release" //for production
-	secure := false //for development
+	secure := os.Getenv("GIN_MODE") == "release"
 	httpOnly := true
-	// c.SetSameSite(http.SameSiteNoneMode) // for cross-site cookies in development and production
-	c.SetSameSite(http.SameSiteLaxMode) // for development only, change to SameSiteNoneMode in production
+	c.SetSameSite(http.SameSiteNoneMode)
 
-	c.SetCookie("access_token", tokens.AccessToken, oneHour, "/", "", secure, httpOnly)
-	c.SetCookie("refresh_token", tokens.RefreshToken, oneYear, "/", "", secure, httpOnly)
+	c.SetCookie(
+		"access_token",
+		tokens.AccessToken,
+		oneHour,
+		"/",
+		"",
+		secure,
+		httpOnly,
+	)
+
+	c.SetCookie(
+		"refresh_token",
+		tokens.RefreshToken,
+		oneYear,
+		"/",
+		"",
+		secure,
+		httpOnly,
+	)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "register successful",
@@ -106,15 +122,30 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	oneHour := 60 * 60
 	oneYear := 365 * 24 * 60 * 60
 
-	// secure := os.Getenv("GIN_MODE") == "release" // for production
-	secure := false // for development
+	secure := os.Getenv("GIN_MODE") == "release"
 	httpOnly := true
 
-	// c.SetSameSite(http.SameSiteNoneMode) // for cross-site cookies in development and production
-	c.SetSameSite(http.SameSiteLaxMode) // for development only, change to SameSiteNoneMode in production
+	c.SetSameSite(http.SameSiteNoneMode)
 
-	c.SetCookie("access_token", tokens.AccessToken, oneHour, "/", "", secure, httpOnly)
-	c.SetCookie("refresh_token", tokens.RefreshToken, oneYear, "/", "", secure, httpOnly)
+	c.SetCookie(
+		"access_token",
+		tokens.AccessToken,
+		oneHour,
+		"/",
+		"",
+		secure,
+		httpOnly,
+	)
+
+	c.SetCookie(
+		"refresh_token",
+		tokens.RefreshToken,
+		oneYear,
+		"/",
+		"",
+		secure,
+		httpOnly,
+	)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "login successful",
@@ -212,6 +243,8 @@ func (h *AuthHandler) Self(c *gin.Context) {
 	})
 }
 
+
+
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil || refreshToken == "" {
@@ -235,12 +268,10 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	oneHour := 60 * 60
 	oneYear := 365 * 24 * 60 * 60
 
-	// secure := os.Getenv("GIN_MODE") == "release" // for production
-	secure := false // for development
+	secure := os.Getenv("GIN_MODE") == "release"
 	httpOnly := true
 
-	// c.SetSameSite(http.SameSiteNoneMode) // for cross-site cookies in development and production
-	c.SetSameSite(http.SameSiteLaxMode) // for development only, change to SameSiteNoneMode in production
+	c.SetSameSite(http.SameSiteNoneMode)
 
 	c.SetCookie(
 		"access_token",
@@ -268,6 +299,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	})
 }
 
+
 func (h *AuthHandler) Logout(c *gin.Context) {
 	refreshToken, err := c.Cookie("refresh_token")
 	if err == nil && refreshToken != "" {
@@ -275,12 +307,10 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		_ = h.authService.RevokeRefreshToken(tokenHash)
 	}
 
-	// secure := os.Getenv("GIN_MODE") == "release" // for production
-	secure := false // for development
+	secure := os.Getenv("GIN_MODE") == "release"
 	httpOnly := true
 
-	// c.SetSameSite(http.SameSiteNoneMode) // for cross-site cookies in development and production
-	c.SetSameSite(http.SameSiteLaxMode) // for development only, change to SameSiteNoneMode in production
+	c.SetSameSite(http.SameSiteNoneMode)
 
 	c.SetCookie("access_token", "", -1, "/", "", secure, httpOnly)
 	c.SetCookie("refresh_token", "", -1, "/", "", secure, httpOnly)
