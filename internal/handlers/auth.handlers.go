@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 
 	"example.com/m/internal/models"
@@ -55,9 +54,11 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	oneHour := 60 * 60
 	oneYear := 365 * 24 * 60 * 60
 
-	secure := os.Getenv("GIN_MODE") == "release"
+	// secure := os.Getenv("GIN_MODE") == "release" //for production
+	secure := false //for development
 	httpOnly := true
-	c.SetSameSite(http.SameSiteNoneMode)
+	// c.SetSameSite(http.SameSiteNoneMode) // for cross-site cookies in development and production
+	c.SetSameSite(http.SameSiteLaxMode) // for development only, change to SameSiteNoneMode in production
 
 	c.SetCookie("access_token", tokens.AccessToken, oneHour, "/", "", secure, httpOnly)
 	c.SetCookie("refresh_token", tokens.RefreshToken, oneYear, "/", "", secure, httpOnly)
@@ -105,10 +106,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	oneHour := 60 * 60
 	oneYear := 365 * 24 * 60 * 60
 
-	secure := os.Getenv("GIN_MODE") == "release"
+	// secure := os.Getenv("GIN_MODE") == "release" // for production
+	secure := false // for development
 	httpOnly := true
 
-	c.SetSameSite(http.SameSiteNoneMode)
+	// c.SetSameSite(http.SameSiteNoneMode) // for cross-site cookies in development and production
+	c.SetSameSite(http.SameSiteLaxMode) // for development only, change to SameSiteNoneMode in production
 
 	c.SetCookie("access_token", tokens.AccessToken, oneHour, "/", "", secure, httpOnly)
 	c.SetCookie("refresh_token", tokens.RefreshToken, oneYear, "/", "", secure, httpOnly)
@@ -232,10 +235,12 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	oneHour := 60 * 60
 	oneYear := 365 * 24 * 60 * 60
 
-	secure := os.Getenv("GIN_MODE") == "release"
+	// secure := os.Getenv("GIN_MODE") == "release" // for production
+	secure := false // for development
 	httpOnly := true
 
-	c.SetSameSite(http.SameSiteNoneMode)
+	// c.SetSameSite(http.SameSiteNoneMode) // for cross-site cookies in development and production
+	c.SetSameSite(http.SameSiteLaxMode) // for development only, change to SameSiteNoneMode in production
 
 	c.SetCookie(
 		"access_token",
@@ -270,10 +275,12 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		_ = h.authService.RevokeRefreshToken(tokenHash)
 	}
 
-	secure := os.Getenv("GIN_MODE") == "release"
+	// secure := os.Getenv("GIN_MODE") == "release" // for production
+	secure := false // for development
 	httpOnly := true
 
-	c.SetSameSite(http.SameSiteNoneMode)
+	// c.SetSameSite(http.SameSiteNoneMode) // for cross-site cookies in development and production
+	c.SetSameSite(http.SameSiteLaxMode) // for development only, change to SameSiteNoneMode in production
 
 	c.SetCookie("access_token", "", -1, "/", "", secure, httpOnly)
 	c.SetCookie("refresh_token", "", -1, "/", "", secure, httpOnly)
