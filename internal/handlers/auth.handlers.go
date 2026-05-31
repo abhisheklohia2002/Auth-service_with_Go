@@ -59,25 +59,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	httpOnly := true
 	c.SetSameSite(http.SameSiteNoneMode)
 
-	c.SetCookie(
-		"access_token",
-		tokens.AccessToken,
-		oneHour,
-		"/",
-		"http://localhost:8001",
-		secure,
-		httpOnly,
-	)
-
-	c.SetCookie(
-		"refresh_token",
-		tokens.RefreshToken,
-		oneYear,
-		"/",
-		"http://localhost:8001",
-		secure,
-		httpOnly,
-	)
+	c.SetCookie("access_token", tokens.AccessToken, oneHour, "/", "", secure, httpOnly)
+	c.SetCookie("refresh_token", tokens.RefreshToken, oneYear, "/", "", secure, httpOnly)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "register successful",
@@ -127,25 +110,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	c.SetSameSite(http.SameSiteNoneMode)
 
-	c.SetCookie(
-		"access_token",
-		tokens.AccessToken,
-		oneHour,
-		"/",
-		"",
-		secure,
-		httpOnly,
-	)
-
-	c.SetCookie(
-		"refresh_token",
-		tokens.RefreshToken,
-		oneYear,
-		"/",
-		"",
-		secure,
-		httpOnly,
-	)
+	c.SetCookie("access_token", tokens.AccessToken, oneHour, "/", "", secure, httpOnly)
+	c.SetCookie("refresh_token", tokens.RefreshToken, oneYear, "/", "", secure, httpOnly)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "login successful",
