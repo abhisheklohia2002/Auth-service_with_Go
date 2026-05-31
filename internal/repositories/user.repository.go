@@ -151,3 +151,30 @@ func (r *UserRepository) FindByID(id uint) (*models.User, error) {
 
 	return &user, nil
 }
+
+
+func (r *UserRepository) FindValidRefreshToken(tokenHash string) (*models.RefreshToken, error) {
+	var refreshToken models.RefreshToken
+
+	err := r.db.
+		Where("token_hash = ? AND revoked_at IS NULL AND expires_at > ?", tokenHash, time.Now()).
+		First(&refreshToken).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &refreshToken, nil
+}
+
+func (r *UserRepository) RevokeRefreshToken(tokenHash string) error {
+	now := time.Now()
+
+	return r.db.Model(&models.RefreshToken{}).
+		Where("token_hash = ? AND revoked_at IS NULL", tokenHash).
+		Update("revoked_at", &now).Error
+}

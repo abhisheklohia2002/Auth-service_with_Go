@@ -69,7 +69,7 @@ func LoadDotenv() Config {
 	DATABASE_URL := os.Getenv("DATABASE_URL")
 	JWT_PRIVATE_KEY := os.Getenv("JWT_PRIVATE_KEY")
 	JWT_PUBLIC_KEY := os.Getenv("JWT_PUBLIC_KEY")
-
+	REFRESH_TOKEN_SECRET := os.Getenv("REFRESH_TOKEN_SECRET")
 	return Config{
 		Port: getEnv("PORT", "5500"),
 
@@ -78,7 +78,7 @@ func LoadDotenv() Config {
 
 		JWTIssuer:               getEnv("JWT_ISSUER", "http://localhost:5500"),
 		JWTKEYID:                getEnv("JWTKEYID", "****"),
-		REFRESH_TOKEN_SECRET:    getEnv("REFRESH_TOKEN_SECRET", "******"),
+		REFRESH_TOKEN_SECRET:    REFRESH_TOKEN_SECRET,
 		AccessTokenExpiryMins:   getEnvAsInt("ACCESS_TOKEN_EXPIRY_MINUTES", 60),
 		RefreshTokenExpiryHours: getEnvAsInt("REFRESH_TOKEN_EXPIRY_HOURS", 8760),
 		USER:                    user,

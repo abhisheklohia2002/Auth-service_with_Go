@@ -242,3 +242,80 @@ func (h *AuthHandler) Self(c *gin.Context) {
 		},
 	})
 }
+
+
+
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil || refreshToken == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "refresh token missing",
+		})
+		return
+	}
+
+	tokens, user, err := h.authService.RefreshTokens(refreshToken)
+	if err != nil {
+		c.SetCookie("access_token", "", -1, "/", "", false, true)
+		c.SetCookie("refresh_token", "", -1, "/", "", false, true)
+
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "invalid or expired refresh token",
+		})
+		return
+	}
+
+	oneHour := 60 * 60
+	oneYear := 365 * 24 * 60 * 60
+
+	secure := os.Getenv("GIN_MODE") == "release"
+	httpOnly := true
+
+	c.SetSameSite(http.SameSiteNoneMode)
+
+	c.SetCookie(
+		"access_token",
+		tokens.AccessToken,
+		oneHour,
+		"/",
+		"",
+		secure,
+		httpOnly,
+	)
+
+	c.SetCookie(
+		"refresh_token",
+		tokens.RefreshToken,
+		oneYear,
+		"/",
+		"",
+		secure,
+		httpOnly,
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "token refreshed successfully",
+		"user":    user,
+	})
+}
+
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	refreshToken, err := c.Cookie("refresh_token")
+	if err == nil && refreshToken != "" {
+		tokenHash := services.HashToken(refreshToken)
+		_ = h.authService.RevokeRefreshToken(tokenHash)
+	}
+
+	secure := os.Getenv("GIN_MODE") == "release"
+	httpOnly := true
+
+	c.SetSameSite(http.SameSiteNoneMode)
+
+	c.SetCookie("access_token", "", -1, "/", "", secure, httpOnly)
+	c.SetCookie("refresh_token", "", -1, "/", "", secure, httpOnly)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "logout successful",
+	})
+}

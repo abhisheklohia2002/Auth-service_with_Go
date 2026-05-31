@@ -23,6 +23,14 @@ type TokenService struct {
 	issuer     string
 }
 
+type TokenClaims struct {
+	UserID    uint   `json:"user_id"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	TokenType string `json:"token_type"`
+	jwt.RegisteredClaims
+}
+
 type Claims struct {
 	UserID uint   `json:"user_id"`
 	Email  string `json:"email"`
@@ -121,4 +129,31 @@ func LoadRSAPrivateKey(path string) (*rsa.PrivateKey, error) {
 	default:
 		return nil, errors.New("unsupported private key type: " + block.Type)
 	}
+}
+
+func (s *TokenService) ValidateRefreshToken(tokenString string) (*TokenClaims, error) {
+	claims := &TokenClaims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		// Make sure token uses HMAC signing
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return []byte(config.LoadDotenv().REFRESH_TOKEN_SECRET), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, errors.New("invalid refresh token")
+	}
+
+	if claims.TokenType != "refresh" {
+		return nil, errors.New("invalid token type")
+	}
+
+	return claims, nil
 }

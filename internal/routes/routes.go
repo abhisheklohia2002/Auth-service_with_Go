@@ -49,6 +49,8 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 		auth.DELETE("/users/:id", authMiddleware.IsAuthMiddleware(string(enums.Admin)), authHandler.DeleteUserById)
 		auth.PUT("/users/:id", authHandler.UpdateUserById)
 		auth.GET("self", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Employee), string(enums.Manager)), authHandler.Self)
+		auth.POST("/refresh", authHandler.RefreshToken)
+		auth.POST("/logout", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Employee), string(enums.Manager)), authHandler.Logout)
 	}
 
 	courses := api.Group("/courses")

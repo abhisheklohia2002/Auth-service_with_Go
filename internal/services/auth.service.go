@@ -165,3 +165,52 @@ func (s *AuthService) generateTokens(user *models.User) (models.AuthResponse, er
 	}, nil
 
 }
+
+
+func (s *AuthService) RefreshTokens(refreshToken string) (models.AuthResponse, models.User, error) {
+	claims, err := s.tokenService.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		return models.AuthResponse{}, models.User{}, errors.New("invalid refresh token")
+	}
+
+	oldTokenHash := HashToken(refreshToken)
+
+	storedToken, err := s.userRepo.FindValidRefreshToken(oldTokenHash)
+	if err != nil {
+		return models.AuthResponse{}, models.User{}, err
+	}
+
+	if storedToken == nil {
+		return models.AuthResponse{}, models.User{}, errors.New("refresh token expired or revoked")
+	}
+
+	user, err := s.userRepo.FindByIDWithRole(claims.UserID)
+	if err != nil {
+		return models.AuthResponse{}, models.User{}, err
+	}
+
+	tokens, err := s.generateTokens(&user)
+	if err != nil {
+		return models.AuthResponse{}, models.User{}, err
+	}
+
+	if err := s.userRepo.RevokeRefreshToken(oldTokenHash); err != nil {
+		return models.AuthResponse{}, models.User{}, err
+	}
+
+	expiry := time.Now().Add(time.Duration(config.LoadDotenv().RefreshTokenExpiryHours) * time.Hour)
+	newRefreshTokenHash := HashToken(tokens.RefreshToken)
+
+	_, err = s.userRepo.PersistRefreshToken(user.ID, newRefreshTokenHash, expiry)
+	if err != nil {
+		return models.AuthResponse{}, models.User{}, err
+	}
+
+	return tokens, user, nil
+}
+
+
+
+func (s *AuthService) RevokeRefreshToken(tokenHash string) error {
+	return s.userRepo.RevokeRefreshToken(tokenHash)
+}
