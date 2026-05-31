@@ -131,17 +131,23 @@ func LoadRSAPrivateKey(path string) (*rsa.PrivateKey, error) {
 	}
 }
 
-func (s *TokenService) ValidateRefreshToken(tokenString string) (*TokenClaims, error) {
-	claims := &TokenClaims{}
 
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		// Make sure token uses HMAC signing
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
+func (s *TokenService) ValidateRefreshToken(tokenString string) (*Claims, error) {
+	claims := &Claims{}
 
-		return []byte(config.LoadDotenv().REFRESH_TOKEN_SECRET), nil
-	})
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+
+			return &s.privateKey.PublicKey, nil
+		},
+		jwt.WithIssuer(s.config.JWTIssuer),
+		jwt.WithAudience("refresh"),
+	)
 
 	if err != nil {
 		return nil, err
@@ -151,8 +157,33 @@ func (s *TokenService) ValidateRefreshToken(tokenString string) (*TokenClaims, e
 		return nil, errors.New("invalid refresh token")
 	}
 
-	if claims.TokenType != "refresh" {
-		return nil, errors.New("invalid token type")
+	return claims, nil
+}
+
+
+func (s *TokenService) ValidateAccessToken(tokenString string) (*Claims, error) {
+	claims := &Claims{}
+
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+
+			return &s.privateKey.PublicKey, nil
+		},
+		jwt.WithIssuer(s.config.JWTIssuer),
+		jwt.WithAudience("access"),
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, errors.New("invalid access token")
 	}
 
 	return claims, nil
