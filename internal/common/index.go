@@ -5,6 +5,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"log"
+
 	"os"
 	"strings"
 
@@ -68,6 +70,11 @@ func LoadRSAPrivateKeyFromEnv(envKey string) (*rsa.PrivateKey, error) {
 	}
 
 	raw = normalizePEM(raw)
+	raw = strings.TrimSpace(raw)
+
+	log.Println("private key len:", len(raw))
+	log.Println("private key prefix:", strings.HasPrefix(raw, "-----BEGIN PRIVATE KEY-----"))
+	log.Println("private key suffix:", strings.HasSuffix(raw, "-----END PRIVATE KEY-----"))
 
 	block, _ := pem.Decode([]byte(raw))
 	if block == nil {
@@ -93,8 +100,9 @@ func LoadRSAPrivateKeyFromEnv(envKey string) (*rsa.PrivateKey, error) {
 
 func LoadRSAPublicKeyFromEnv(envKey string) (*rsa.PublicKey, error) {
 	raw := os.Getenv(envKey)
+
 	if raw == "" {
-		return nil, errors.New(envKey + " is not set")
+		return nil, errors.New(envKey + "  is not set")
 	}
 
 	raw = normalizePEM(raw)

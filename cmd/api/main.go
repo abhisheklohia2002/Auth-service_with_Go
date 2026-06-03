@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -14,6 +15,7 @@ import (
 	handlers_assessmentquestion "example.com/m/internal/handlers/assessment_question"
 	handlers_assessmentrule "example.com/m/internal/handlers/assessment_rule"
 	handlers_assignments "example.com/m/internal/handlers/assignments"
+	handlers_attendance "example.com/m/internal/handlers/attendance"
 	handlers_certificateIssue "example.com/m/internal/handlers/certificate_issue"
 	handlers_certification "example.com/m/internal/handlers/certification"
 	handlers_certificationrule "example.com/m/internal/handlers/certification_rule"
@@ -23,6 +25,7 @@ import (
 	handlers_role "example.com/m/internal/handlers/role"
 	handlers_trainingassignment "example.com/m/internal/handlers/training_assignment"
 	handlers_trainingmapping "example.com/m/internal/handlers/training_mapping"
+	handlers_trainingsession "example.com/m/internal/handlers/training_session"
 
 	"example.com/m/internal/middleware"
 	"example.com/m/internal/models"
@@ -36,6 +39,7 @@ import (
 	repositories_assessmentquestionoption "example.com/m/internal/repositories/assessment_question_option"
 	repositories_assessmentrule "example.com/m/internal/repositories/assessment_rule"
 	repositories_assignments "example.com/m/internal/repositories/assignments"
+	repositories_attendance "example.com/m/internal/repositories/attendance"
 	repositories_certificateIssue "example.com/m/internal/repositories/certificate_issue"
 	repositories_certification "example.com/m/internal/repositories/certification"
 	repositories_certificationrule "example.com/m/internal/repositories/certification_rule"
@@ -44,6 +48,7 @@ import (
 	repositories_moduleprogress "example.com/m/internal/repositories/module_progress"
 	repositories_trainingassignment "example.com/m/internal/repositories/training_assignment"
 	repositories_trainingmapping "example.com/m/internal/repositories/training_mapping"
+	repositories_trainingsession "example.com/m/internal/repositories/training_session"
 
 	"example.com/m/internal/routes"
 	"example.com/m/internal/seeders"
@@ -54,6 +59,7 @@ import (
 	services_assessmentquestion "example.com/m/internal/services/assessment_question"
 	services_assessmentrule "example.com/m/internal/services/assessment_rule"
 	services_assignments "example.com/m/internal/services/assignments"
+	services_attendence "example.com/m/internal/services/attendence"
 	services_certificateissue "example.com/m/internal/services/certificate_issue"
 	services_certificatepdf "example.com/m/internal/services/certificate_pdf"
 	services_certification "example.com/m/internal/services/certification"
@@ -64,6 +70,7 @@ import (
 	services_role "example.com/m/internal/services/role"
 	services_trainingassignment "example.com/m/internal/services/training_assignment"
 	services_trainingmapping "example.com/m/internal/services/training_mapping"
+	services_trainingsession "example.com/m/internal/services/training_session"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -71,8 +78,8 @@ import (
 
 func main() {
 	cfg := config.LoadDotenv()
-
-	database := db.SetupDB()
+	fmt.Printf("config: %+v\n", cfg)
+	database := db.SetupDB(cfg)
 
 	err := database.AutoMigrate(
 
@@ -100,6 +107,9 @@ func main() {
 		&models.CertificateIssue{},
 
 		&models.Notification{},
+		&models.TrainingSession{},
+		&models.Attendance{},
+		&models.ModuleDocument{},
 	)
 	if err != nil {
 		log.Fatal("migration failed: ", err)
@@ -120,6 +130,7 @@ func main() {
 	if frontendURL := os.Getenv("FRONTEND_URL"); frontendURL != "" {
 		allowedOrigins = append(allowedOrigins, frontendURL)
 	}
+	log.Printf("Allowed CORS origins: %v\n", allowedOrigins)
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: allowedOrigins,
 		AllowMethods: []string{
@@ -305,6 +316,14 @@ func main() {
 		certificateIssueService,
 	)
 
+	trainingSessionRepo := repositories_trainingsession.NewTrainingSessionRepository(database)
+	trainingSessionService := services_trainingsession.NewTrainingSessionService(trainingSessionRepo)
+	trainingSessionHandler := handlers_trainingsession.NewTrainingSessionHandler(trainingSessionService)
+
+	attendanceRepo := repositories_attendance.NewAttendanceRepository(database)
+	attendanceService := services_attendence.NewAttendanceService(attendanceRepo, trainingSessionRepo)
+	attendanceHandler := handlers_attendance.NewAttendanceHandler(attendanceService)
+
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "LMS backend is running",
@@ -333,6 +352,8 @@ func main() {
 		roleHandler,
 		assessmentQuestionHandler,
 		assignmentRuleHandler,
+		trainingSessionHandler,
+		attendanceHandler,
 	)
 
 	router.GET("/health", func(c *gin.Context) {

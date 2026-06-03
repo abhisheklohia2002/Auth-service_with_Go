@@ -8,6 +8,7 @@ import (
 	handlers_assessmentquestion "example.com/m/internal/handlers/assessment_question"
 	handlers_assessmentrule "example.com/m/internal/handlers/assessment_rule"
 	handlers_assignments "example.com/m/internal/handlers/assignments"
+	handlers_attendance "example.com/m/internal/handlers/attendance"
 	handlers_certificateIssue "example.com/m/internal/handlers/certificate_issue"
 	handlers_certification "example.com/m/internal/handlers/certification"
 	handlers_certificationrule "example.com/m/internal/handlers/certification_rule"
@@ -17,6 +18,7 @@ import (
 	handlers_role "example.com/m/internal/handlers/role"
 	handlers_trainingassignment "example.com/m/internal/handlers/training_assignment"
 	handlers_trainingmapping "example.com/m/internal/handlers/training_mapping"
+	handlers_trainingsession "example.com/m/internal/handlers/training_session"
 	"example.com/m/internal/middleware"
 	"example.com/m/internal/services"
 	"github.com/gin-gonic/gin"
@@ -39,6 +41,8 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	roleHandler *handlers_role.RoleHandler,
 	assessmentQuestionHandler *handlers_assessmentquestion.AssessmentQuestionHandler,
 	assignmentRuleHandler *handlers_assignments.AssignmentRuleHandler,
+	trainingsession *handlers_trainingsession.TrainingSessionHandler,
+	attendanceHandler *handlers_attendance.AttendanceHandler,
 ) {
 	api := router.Group("/api")
 	auth := api.Group("/auth")
@@ -429,5 +433,23 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
 			assignmentRuleHandler.Delete,
 		)
+	}
+
+	trainingSessions := api.Group("/training-sessions")
+	{
+		trainingSessions.POST("", trainingsession.Create)
+		trainingSessions.GET("", trainingsession.GetAll)
+		trainingSessions.GET("/:id", trainingsession.GetByID)
+		trainingSessions.PUT("/:id", trainingsession.Update)
+		trainingSessions.DELETE("/:id", trainingsession.Delete)
+	}
+
+	attendences := api.Group("/attendances");
+	{
+		attendences.POST("/training-sessions/:sessionId/attendance", attendanceHandler.Mark)
+		attendences.POST("/training-sessions/:sessionId/attendance/bulk", attendanceHandler.BulkMark)
+		attendences.GET("/training-sessions/:sessionId/attendance", attendanceHandler.GetBySession)
+		attendences.GET("/users/:userId/attendance", attendanceHandler.GetByUser)
+		attendences.PUT("/attendance/:attendanceId", attendanceHandler.Update)
 	}
 }
