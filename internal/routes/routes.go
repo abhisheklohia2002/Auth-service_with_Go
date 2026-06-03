@@ -444,12 +444,19 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 		trainingSessions.DELETE("/:id", trainingsession.Delete)
 	}
 
-	attendences := api.Group("/attendances");
+	attendences := api.Group("/attendances")
 	{
 		attendences.POST("/training-sessions/:sessionId/attendance", attendanceHandler.Mark)
 		attendences.POST("/training-sessions/:sessionId/attendance/bulk", attendanceHandler.BulkMark)
 		attendences.GET("/training-sessions/:sessionId/attendance", attendanceHandler.GetBySession)
 		attendences.GET("/users/:userId/attendance", attendanceHandler.GetByUser)
 		attendences.PUT("/attendance/:attendanceId", attendanceHandler.Update)
+	}
+
+	moduleDocuments := api.Group("/module-documents")
+	{
+		moduleDocuments.POST("/upload", moduleHandler.UploadPDF)
+		moduleDocuments.GET("/module/:moduleId", moduleHandler.FindByModuleID)
+		moduleDocuments.DELETE("/:documentId", moduleHandler.DeleteByIdDocument)
 	}
 }

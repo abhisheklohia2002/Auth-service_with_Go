@@ -2,6 +2,7 @@ package handlers_module
 
 import (
 	"net/http"
+	"strconv"
 
 	"example.com/m/internal/dto"
 	"example.com/m/internal/helper"
@@ -152,5 +153,109 @@ func (h *ModuleHandler) Delete(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "module deleted successfully",
+	})
+}
+
+func (ctrl *ModuleHandler) UploadPDF(c *gin.Context) {
+	moduleIDParam := c.PostForm("module_id")
+
+	moduleID64, err := strconv.ParseUint(moduleIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid module id"})
+		return
+	}
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "PDF file is required"})
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Unable to open uploaded file"})
+		return
+	}
+	defer file.Close()
+
+	title := c.PostForm("title")
+
+	document, err := ctrl.moduleService.UploadPDF(
+		c.Request.Context(),
+		uint(moduleID64),
+		title,
+		file,
+		fileHeader,
+	)
+
+	if err != nil {
+		status := http.StatusInternalServerError
+
+		switch err.Error() {
+		case "module not found", "document not found":
+			status = http.StatusNotFound
+		case "only PDF files are allowed", "PDF size must be less than 25MB":
+			status = http.StatusBadRequest
+		}
+
+		c.JSON(status, gin.H{"message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":  "PDF uploaded successfully",
+		"document": document,
+	})
+}
+
+func (ctrl *ModuleHandler) FindByModuleID(c *gin.Context) {
+	moduleIDParam := c.Param("moduleId")
+
+	moduleID64, err := strconv.ParseUint(moduleIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid module id"})
+		return
+	}
+
+	documents, err := ctrl.moduleService.FindByModuleID(uint(moduleID64))
+	if err != nil {
+		status := http.StatusInternalServerError
+
+		if err.Error() == "module not found" {
+			status = http.StatusNotFound
+		}
+
+		c.JSON(status, gin.H{"message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"documents": documents,
+	})
+}
+
+func (ctrl *ModuleHandler) DeleteByIdDocument(c *gin.Context) {
+	documentIDParam := c.Param("documentId")
+
+	documentID64, err := strconv.ParseUint(documentIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid document id"})
+		return
+	}
+
+	err = ctrl.moduleService.DeleteByIdDocument(uint(documentID64))
+	if err != nil {
+		status := http.StatusInternalServerError
+
+		if err.Error() == "document not found" {
+			status = http.StatusNotFound
+		}
+
+		c.JSON(status, gin.H{"message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Document deleted successfully",
 	})
 }

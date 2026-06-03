@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"example.com/m/internal/common/storage"
 	"example.com/m/internal/config"
 	"example.com/m/internal/db"
 
@@ -45,6 +46,7 @@ import (
 	repositories_certificationrule "example.com/m/internal/repositories/certification_rule"
 	repositories_course "example.com/m/internal/repositories/course"
 	repositories_module "example.com/m/internal/repositories/module"
+	repositories_moduleDocument "example.com/m/internal/repositories/module_document"
 	repositories_moduleprogress "example.com/m/internal/repositories/module_progress"
 	repositories_trainingassignment "example.com/m/internal/repositories/training_assignment"
 	repositories_trainingmapping "example.com/m/internal/repositories/training_mapping"
@@ -203,8 +205,10 @@ func main() {
 
 	courseService := services_course.NewCourseService(courseRepo)
 	courseHandler := handlers_course.NewCourseHandler(courseService)
-
-	moduleService := services_module.NewModuleService(moduleRepo, courseRepo)
+	cld := config.NewCloudinary()
+	fileUploader := storage.NewCloudinaryUploader(cld)
+	moduleDocumentRepo := repositories_moduleDocument.NewModuleDocumentRepository(database)
+	moduleService := services_module.NewModuleService(moduleRepo, courseRepo, fileUploader, moduleDocumentRepo)
 	moduleHandler := handlers_module.NewModuleHandler(moduleService)
 
 	trainingMappingService := services_trainingmapping.NewTrainingMappingService(

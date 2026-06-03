@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/joho/godotenv"
 )
 
@@ -32,6 +33,10 @@ type Config struct {
 	DATABASE_URL    string
 	JWT_PRIVATE_KEY string
 	JWT_PUBLIC_KEY  string
+
+	CLOUDINARY_CLOUD_NAME string
+	CLOUDINARY_API_KEY    string
+	CLOUDINARY_API_SECRET string
 }
 
 func getEnv(key string, fallback string) string {
@@ -60,6 +65,18 @@ func getEnvAsInt(key string, fallback int) int {
 	return intValue
 }
 
+func NewCloudinary() *cloudinary.Cloudinary {
+	cloudName := os.Getenv("CLOUDINARY_CLOUD_NAME")
+	apiKey := os.Getenv("CLOUDINARY_API_KEY")
+	apiSecret := os.Getenv("CLOUDINARY_API_SECRET")
+
+	cld, err := cloudinary.NewFromParams(cloudName, apiKey, apiSecret)
+	if err != nil {
+		log.Fatal("failed to initialize cloudinary: ", err)
+	}
+
+	return cld
+}
 func LoadDotenv() Config {
 	wd, _ := os.Getwd()
 	log.Println("working dir:", wd)
@@ -93,5 +110,9 @@ func LoadDotenv() Config {
 		DATABASE_URL:    getEnv("DATABASE_URL", ""),
 		JWT_PRIVATE_KEY: normalizePEM(getEnv("JWT_PRIVATE_KEY", "")),
 		JWT_PUBLIC_KEY:  normalizePEM(getEnv("JWT_PUBLIC_KEY", "")),
+
+		CLOUDINARY_CLOUD_NAME: getEnv("CLOUDINARY_CLOUD_NAME", ""),
+		CLOUDINARY_API_KEY:    getEnv("CLOUDINARY_API_KEY", ""),
+		CLOUDINARY_API_SECRET: getEnv("CLOUDINARY_API_SECRET", ""),
 	}
 }
