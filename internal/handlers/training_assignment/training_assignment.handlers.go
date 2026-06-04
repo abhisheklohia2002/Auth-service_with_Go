@@ -195,3 +195,27 @@ func parseUintParam(c *gin.Context, paramName string) (uint, bool) {
 
 	return uint(id64), true
 }
+
+func (h *TrainingAssignmentHandler) AssignCourseToDepartment(c *gin.Context) {
+	var req services_trainingassignment.CreateDepartmentTrainingAssignmentRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	result, err := h.trainingAssignmentService.AssignCourseToDepartment(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "course assigned to department successfully",
+		"result":  result,
+	})
+}

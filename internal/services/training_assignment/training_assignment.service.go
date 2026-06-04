@@ -24,6 +24,21 @@ type TrainingAssignmentService struct {
 	moduleProgressRepo     *repositories_moduleprogress.ModuleProgressRepository
 }
 
+type CreateDepartmentTrainingAssignmentRequest struct {
+	DepartmentID     uint       `json:"department_id" binding:"required"`
+	CourseID         uint       `json:"course_id" binding:"required"`
+	AssignedByUserID uint       `json:"assigned_by_user_id" binding:"required"`
+	IsMandatory      bool       `json:"is_mandatory"`
+	DueDate          *time.Time `json:"due_date"`
+}
+type DepartmentTrainingAssignmentResponse struct {
+	DepartmentID         uint `json:"department_id"`
+	CourseID             uint `json:"course_id"`
+	TotalUsers           int  `json:"total_users"`
+	AssignedCount        int  `json:"assigned_count"`
+	SkippedExistingCount int  `json:"skipped_existing_count"`
+}
+
 func NewTrainingAssignmentService(
 	trainingAssignmentRepo *repositories_trainingassignment.TrainingAssignmentRepository,
 	trainingMappingRepo *repository_trainingmapping.TrainingMappingRepository,
@@ -266,4 +281,102 @@ func isValidAssignmentStatus(status string) bool {
 	default:
 		return false
 	}
+}
+
+
+
+func (s *TrainingAssignmentService) AssignCourseToDepartment(
+	req CreateDepartmentTrainingAssignmentRequest,
+) (*DepartmentTrainingAssignmentResponse, error) {
+	if req.DepartmentID == 0 {
+		return nil, errors.New("department_id is required")
+	}
+
+	if req.CourseID == 0 {
+		return nil, errors.New("course_id is required")
+	}
+
+	if req.AssignedByUserID == 0 {
+		return nil, errors.New("assigned_by_user_id is required")
+	}
+
+	assignedByUser, err := s.userRepo.FindByID(req.AssignedByUserID)
+	if err != nil {
+		return nil, err
+	}
+	if assignedByUser == nil {
+		return nil, errors.New("assigned by user not found")
+	}
+
+	course, err := s.courseRepo.FindByID(req.CourseID)
+	if err != nil {
+		return nil, err
+	}
+	if course == nil {
+		return nil, errors.New("course not found")
+	}
+
+	users, err := s.userRepo.FindActiveByDepartmentID(req.DepartmentID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(users) == 0 {
+		return nil, errors.New("no active users found in this department")
+	}
+
+	modules, err := s.moduleRepo.FindByCourseID(req.CourseID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(modules) == 0 {
+		return nil, errors.New("course has no modules")
+	}
+
+	assignedCount := 0
+	skippedExistingCount := 0
+
+	for _, user := range users {
+		exists, err := s.trainingAssignmentRepo.ExistsByUserAndCourse(user.ID, req.CourseID)
+		if err != nil {
+			return nil, err
+		}
+
+		if exists {
+			skippedExistingCount++
+			continue
+		}
+
+		assignment := models.TrainingAssignment{
+			UserID:           user.ID,
+			CourseID:         req.CourseID,
+			AssignedByUserID: req.AssignedByUserID,
+			AssignmentSource: "department",
+			IsMandatory:      req.IsMandatory,
+			AssignedDate:     time.Now(),
+			DueDate:          req.DueDate,
+			Status:           "assigned",
+			DepartmentID:     &req.DepartmentID,
+		}
+
+		created, err := s.trainingAssignmentRepo.Create(&assignment)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := s.createModuleProgressForAssignment(created); err != nil {
+			return nil, err
+		}
+
+		assignedCount++
+	}
+
+	return &DepartmentTrainingAssignmentResponse{
+		DepartmentID:         req.DepartmentID,
+		CourseID:             req.CourseID,
+		TotalUsers:           len(users),
+		AssignedCount:        assignedCount,
+		SkippedExistingCount: skippedExistingCount,
+	}, nil
 }

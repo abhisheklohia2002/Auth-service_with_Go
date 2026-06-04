@@ -190,7 +190,7 @@ func (h *AuthHandler) DeleteUserById(c *gin.Context) {
 func (h *AuthHandler) UpdateUserById(c *gin.Context) {
 	id := c.Param("id")
 	num, _ := strconv.Atoi(id)
-	var req models.RegisterRequest
+	var req models.UpdateUserRequest
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{

@@ -74,6 +74,7 @@ func (s *AuthService) Register(req models.RegisterRequest) (models.AuthResponse,
 		ManagerID:    req.ManagerID,
 		Status:       "active",
 		JoiningDate:  time.Now(),
+		DepartmentID: req.DepartmentID,
 	}
 
 	createdUser, err := s.userRepo.Create(&user)
@@ -136,7 +137,7 @@ func (s *AuthService) DeleteUserById(id int) (models.User, error) {
 	return s.userRepo.DeleteUserById(id)
 }
 
-func (s *AuthService) UpdateUserById(c context.Context, id uint, req models.RegisterRequest) (models.User, error) {
+func (s *AuthService) UpdateUserById(c context.Context, id uint, req models.UpdateUserRequest) (models.User, error) {
 	user, err := s.userRepo.UpdateUserById(c, id, req)
 	if err != nil {
 		return models.User{}, err
@@ -165,7 +166,6 @@ func (s *AuthService) generateTokens(user *models.User) (models.AuthResponse, er
 	}, nil
 
 }
-
 
 func (s *AuthService) RefreshTokens(refreshToken string) (models.AuthResponse, models.User, error) {
 	claims, err := s.tokenService.ValidateRefreshToken(refreshToken)
@@ -208,8 +208,6 @@ func (s *AuthService) RefreshTokens(refreshToken string) (models.AuthResponse, m
 
 	return tokens, user, nil
 }
-
-
 
 func (s *AuthService) RevokeRefreshToken(tokenHash string) error {
 	return s.userRepo.RevokeRefreshToken(tokenHash)

@@ -21,4 +21,7 @@ type User struct {
 	AssessmentAttempts  []AssessmentAttempt  `gorm:"foreignKey:UserID" json:"assessment_attempts,omitempty"`
 	CertificateIssues   []CertificateIssue   `gorm:"foreignKey:UserID" json:"certificate_issues,omitempty"`
 	Notifications       []Notification       `gorm:"foreignKey:UserID" json:"notifications,omitempty"`
+
+	DepartmentID *uint       `json:"department_id"`
+	Department   *Department `gorm:"foreignKey:DepartmentID" json:"department,omitempty"`
 }

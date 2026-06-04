@@ -13,6 +13,8 @@ import (
 	handlers_certification "example.com/m/internal/handlers/certification"
 	handlers_certificationrule "example.com/m/internal/handlers/certification_rule"
 	handlers_course "example.com/m/internal/handlers/course"
+	handlers_department "example.com/m/internal/handlers/department"
+	handlers_department_training_mapping "example.com/m/internal/handlers/department_training_mapping"
 	handlers_module "example.com/m/internal/handlers/module"
 	handlers_moduleprogress "example.com/m/internal/handlers/module_progress"
 	handlers_role "example.com/m/internal/handlers/role"
@@ -43,6 +45,8 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	assignmentRuleHandler *handlers_assignments.AssignmentRuleHandler,
 	trainingsession *handlers_trainingsession.TrainingSessionHandler,
 	attendanceHandler *handlers_attendance.AttendanceHandler,
+	departmentHandler *handlers_department.DepartmentHandler,
+	departmentTrainingMappingHandler *handlers_department_training_mapping.DepartmentTrainingMappingHandler,
 ) {
 	api := router.Group("/api")
 	auth := api.Group("/auth")
@@ -144,6 +148,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
 			trainingAssignmentHandler.Delete,
 		)
+		trainingAssignments.POST("/department", trainingAssignmentHandler.AssignCourseToDepartment)
 	}
 
 	moduleProgress := api.Group("/module-progress")
@@ -459,4 +464,21 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 		moduleDocuments.GET("/module/:moduleId", moduleHandler.FindByModuleID)
 		moduleDocuments.DELETE("/:documentId", moduleHandler.DeleteByIdDocument)
 	}
+
+	departments := api.Group("/departments")
+	{
+		departments.POST("", departmentHandler.Create)
+		departments.GET("", departmentHandler.GetAll)
+		departments.GET("/:id", departmentHandler.GetByID)
+		departments.PUT("/:id", departmentHandler.Update)
+		departments.DELETE("/:id", departmentHandler.Delete)
+		departments.GET("/:id/training-mappings", departmentTrainingMappingHandler.GetByDepartmentID)
+	}
+	
+	departmentMappings := api.Group("/department-training-mappings")
+	{
+		departmentMappings.POST("", departmentTrainingMappingHandler.Create)
+		departmentMappings.GET("", departmentTrainingMappingHandler.GetAll)
+	}
+
 }
