@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -52,32 +53,34 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		})
 		return
 	}
-	oneHour := 60 * 60
-	oneYear := 365 * 24 * 60 * 60
+	setAuthCookies(c, tokens.AccessToken, tokens.RefreshToken)
 
-	secure := os.Getenv("GIN_MODE") == "release"
-	httpOnly := true
-	c.SetSameSite(http.SameSiteNoneMode)
+	// oneHour := 60 * 60
+	// oneYear := 365 * 24 * 60 * 60
 
-	c.SetCookie(
-		"access_token",
-		tokens.AccessToken,
-		oneHour,
-		"/",
-		"",
-		secure,
-		httpOnly,
-	)
+	// secure := os.Getenv("GIN_MODE") == "release"
+	// httpOnly := true
+	// c.SetSameSite(http.SameSiteNoneMode)
 
-	c.SetCookie(
-		"refresh_token",
-		tokens.RefreshToken,
-		oneYear,
-		"/",
-		"",
-		secure,
-		httpOnly,
-	)
+	// c.SetCookie(
+	// 	"access_token",
+	// 	tokens.AccessToken,
+	// 	oneHour,
+	// 	"/",
+	// 	"",
+	// 	secure,
+	// 	httpOnly,
+	// )
+
+	// c.SetCookie(
+	// 	"refresh_token",
+	// 	tokens.RefreshToken,
+	// 	oneYear,
+	// 	"/",
+	// 	"",
+	// 	secure,
+	// 	httpOnly,
+	// )
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "register successful",
@@ -118,34 +121,35 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		})
 		return
 	}
+	setAuthCookies(c, tokens.AccessToken, tokens.RefreshToken)
 
-	oneHour := 60 * 60
-	oneYear := 365 * 24 * 60 * 60
+	// oneHour := 60
+	// oneYear := 365 * 24 * 60 * 60
 
-	secure := os.Getenv("GIN_MODE") == "release"
-	httpOnly := true
+	// secure := os.Getenv("GIN_MODE") == "release"
+	// httpOnly := true
 
-	c.SetSameSite(http.SameSiteNoneMode)
+	// c.SetSameSite(http.SameSiteNoneMode)
 
-	c.SetCookie(
-		"access_token",
-		tokens.AccessToken,
-		oneHour,
-		"/",
-		"",
-		secure,
-		httpOnly,
-	)
+	// c.SetCookie(
+	// 	"access_token",
+	// 	tokens.AccessToken,
+	// 	oneHour,
+	// 	"/",
+	// 	"",
+	// 	secure,
+	// 	httpOnly,
+	// )
 
-	c.SetCookie(
-		"refresh_token",
-		tokens.RefreshToken,
-		oneYear,
-		"/",
-		"",
-		secure,
-		httpOnly,
-	)
+	// c.SetCookie(
+	// 	"refresh_token",
+	// 	tokens.RefreshToken,
+	// 	oneYear,
+	// 	"/",
+	// 	"",
+	// 	secure,
+	// 	httpOnly,
+	// )
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "login successful",
@@ -243,8 +247,6 @@ func (h *AuthHandler) Self(c *gin.Context) {
 	})
 }
 
-
-
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil || refreshToken == "" {
@@ -256,49 +258,51 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 
 	tokens, user, err := h.authService.RefreshTokens(refreshToken)
 	if err != nil {
-		c.SetCookie("access_token", "", -1, "/", "", false, true)
-		c.SetCookie("refresh_token", "", -1, "/", "", false, true)
+		clearAuthCookies(c)
 
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "invalid or expired refresh token",
 		})
 		return
 	}
+	log.Println("refresh hit")
+	log.Println("new access token empty?", tokens.AccessToken == "")
+	log.Println("new refresh token empty?", tokens.RefreshToken == "")
+	setAuthCookies(c, tokens.AccessToken, tokens.RefreshToken)
 
-	oneHour := 60 * 60
-	oneYear := 365 * 24 * 60 * 60
+	// accessTokenAge := 60 * 60
+	// refreshTokenAge := 365 * 24 * 60 * 60
 
-	secure := os.Getenv("GIN_MODE") == "release"
-	httpOnly := true
+	// secure := os.Getenv("GIN_MODE") == "release"
+	// httpOnly := true
 
-	c.SetSameSite(http.SameSiteNoneMode)
+	// c.SetSameSite(http.SameSiteNoneMode)
 
-	c.SetCookie(
-		"access_token",
-		tokens.AccessToken,
-		oneHour,
-		"/",
-		"",
-		secure,
-		httpOnly,
-	)
+	// c.SetCookie(
+	// 	"access_token",
+	// 	tokens.AccessToken,
+	// 	accessTokenAge,
+	// 	"/",
+	// 	"",
+	// 	secure,
+	// 	httpOnly,
+	// )
 
-	c.SetCookie(
-		"refresh_token",
-		tokens.RefreshToken,
-		oneYear,
-		"/",
-		"",
-		secure,
-		httpOnly,
-	)
+	// c.SetCookie(
+	// 	"refresh_token",
+	// 	tokens.RefreshToken,
+	// 	refreshTokenAge,
+	// 	"/",
+	// 	"",
+	// 	secure,
+	// 	httpOnly,
+	// )
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "token refreshed successfully",
 		"user":    user,
 	})
 }
-
 
 func (h *AuthHandler) Logout(c *gin.Context) {
 	refreshToken, err := c.Cookie("refresh_token")
@@ -307,15 +311,57 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		_ = h.authService.RevokeRefreshToken(tokenHash)
 	}
 
-	secure := os.Getenv("GIN_MODE") == "release"
-	httpOnly := true
-
-	c.SetSameSite(http.SameSiteNoneMode)
-
-	c.SetCookie("access_token", "", -1, "/", "", secure, httpOnly)
-	c.SetCookie("refresh_token", "", -1, "/", "", secure, httpOnly)
+	clearAuthCookies(c)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "logout successful",
 	})
+}
+
+func setAuthCookies(c *gin.Context, accessToken string, refreshToken string) {
+	isProd := os.Getenv("GIN_MOD") == "release"
+	httpOnly := true
+
+	accessTokenAge := 60
+	refreshTokenAge := 365 * 24 * 60 * 60
+
+	if isProd {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode)
+	}
+
+	c.SetCookie(
+		"access_token",
+		accessToken,
+		accessTokenAge,
+		"/",
+		"",
+		isProd,
+		httpOnly,
+	)
+
+	c.SetCookie(
+		"refresh_token",
+		refreshToken,
+		refreshTokenAge,
+		"/",
+		"",
+		isProd,
+		httpOnly,
+	)
+}
+
+func clearAuthCookies(c *gin.Context) {
+	isProd := os.Getenv("GIN_MODE") == "release"
+	httpOnly := true
+
+	if isProd {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode)
+	}
+
+	c.SetCookie("access_token", "", -1, "/", "", isProd, httpOnly)
+	c.SetCookie("refresh_token", "", -1, "/", "", isProd, httpOnly)
 }

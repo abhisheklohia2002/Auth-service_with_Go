@@ -12,4 +12,5 @@ type Module struct {
 	Course           Course           `gorm:"foreignKey:CourseID" json:"course,omitempty"`
 	Assessments      []Assessment     `gorm:"foreignKey:ModuleID" json:"assessments,omitempty"`
 	ModuleProgresses []ModuleProgress `gorm:"foreignKey:ModuleID" json:"module_progresses,omitempty"`
+	Documents []ModuleDocument `gorm:"foreignKey:ModuleID" json:"documents,omitempty"`
 }
