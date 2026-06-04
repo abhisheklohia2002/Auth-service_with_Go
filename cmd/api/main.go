@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	
 	"log"
 	"os"
 	"time"
@@ -80,7 +80,7 @@ import (
 
 func main() {
 	cfg := config.LoadDotenv()
-	fmt.Printf("config: %+v\n", cfg)
+	// fmt.Printf("config: %+v\n", cfg)
 	database := db.SetupDB(cfg)
 
 	err := database.AutoMigrate(
