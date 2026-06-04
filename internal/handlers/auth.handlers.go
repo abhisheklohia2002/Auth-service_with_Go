@@ -319,7 +319,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 }
 
 func setAuthCookies(c *gin.Context, accessToken string, refreshToken string) {
-	isProd := os.Getenv("GIN_MOD") == "release"
+	isProd := os.Getenv("GIN_MODE") == "release"
 	httpOnly := true
 
 	accessTokenAge := 60
