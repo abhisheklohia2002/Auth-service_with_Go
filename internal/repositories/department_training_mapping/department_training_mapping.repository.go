@@ -77,3 +77,5 @@ func (r *departmentTrainingMappingRepository) Exists(departmentID uint, courseID
 
 	return count > 0, err
 }
+
+

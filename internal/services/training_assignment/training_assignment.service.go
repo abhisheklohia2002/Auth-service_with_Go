@@ -380,3 +380,9 @@ func (s *TrainingAssignmentService) AssignCourseToDepartment(
 		SkippedExistingCount: skippedExistingCount,
 	}, nil
 }
+
+
+
+func (s *TrainingAssignmentService) FindDepartmentAssignments() ([]models.TrainingAssignment, error) {
+	return s.trainingAssignmentRepo.FindDepartmentAssignments()
+}

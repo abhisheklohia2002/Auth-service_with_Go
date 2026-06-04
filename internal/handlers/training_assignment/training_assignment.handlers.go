@@ -219,3 +219,18 @@ func (h *TrainingAssignmentHandler) AssignCourseToDepartment(c *gin.Context) {
 		"result":  result,
 	})
 }
+
+func (h *TrainingAssignmentHandler) FindDepartmentAssignments(c *gin.Context) {
+	assignments, err := h.trainingAssignmentService.FindDepartmentAssignments()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "department assignments fetched successfully",
+		"assignments": assignments,
+	})
+}

@@ -148,7 +148,12 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
 			trainingAssignmentHandler.Delete,
 		)
-		trainingAssignments.POST("/department", trainingAssignmentHandler.AssignCourseToDepartment)
+		trainingAssignments.POST("/department",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),trainingAssignmentHandler.AssignCourseToDepartment)
+		trainingAssignments.GET("/department", 
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+		
+		trainingAssignmentHandler.FindDepartmentAssignments)
 	}
 
 	moduleProgress := api.Group("/module-progress")
@@ -474,7 +479,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 		departments.DELETE("/:id", departmentHandler.Delete)
 		departments.GET("/:id/training-mappings", departmentTrainingMappingHandler.GetByDepartmentID)
 	}
-	
+
 	departmentMappings := api.Group("/department-training-mappings")
 	{
 		departmentMappings.POST("", departmentTrainingMappingHandler.Create)

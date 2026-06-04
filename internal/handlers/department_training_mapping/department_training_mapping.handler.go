@@ -78,3 +78,4 @@ func (h *DepartmentTrainingMappingHandler) GetByDepartmentID(c *gin.Context) {
 		"mappings": mappings,
 	})
 }
+
