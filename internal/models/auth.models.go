@@ -3,12 +3,15 @@ package models
 import "time"
 
 type RegisterRequest struct {
-	Name     string `json:"name" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-	// RoleID       uint   `json:"role_id" binding:"required"`
+	Name         string `json:"name"`
+	FullName     string `json:"full_name"`
+	Email        string `json:"email" binding:"required,email"`
+	Password     string `json:"password" binding:"required,min=6"`
+	RoleID       uint   `json:"role_id"`
 	EmployeeCode string `json:"employee_code"`
 	ManagerID    *uint  `json:"manager_id"`
+	DepartmentID *uint  `json:"department_id"`
+	Status       string `json:"status"`
 }
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required"`
@@ -28,4 +31,15 @@ type RefreshToken struct {
 type AuthResponse struct {
 	RefreshToken string `json:"refresh_token"`
 	AccessToken  string `json:"access_token"`
+}
+
+type UpdateUserRequest struct {
+	FullName     string `json:"full_name"`
+	Name         string `json:"name"`
+	Email        string `json:"email"`
+	EmployeeCode string `json:"employee_code"`
+	RoleID       uint   `json:"role_id"`
+	ManagerID    *uint  `json:"manager_id"`
+	DepartmentID *uint  `json:"department_id"`
+	Status       string `json:"status"`
 }

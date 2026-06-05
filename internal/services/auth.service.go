@@ -61,19 +61,16 @@ func (s *AuthService) Register(req models.RegisterRequest) (models.AuthResponse,
 	if err != nil {
 		return models.AuthResponse{}, models.User{}, err
 	}
-	role, err := s.roleRepo.FindByName("employee")
-	if err != nil {
-		return models.AuthResponse{}, models.User{}, err
-	}
 	user := models.User{
 		FullName:     req.Name,
 		Email:        req.Email,
 		Password:     string(hashedPassword),
-		RoleID:       role.ID,
+		RoleID:       req.RoleID,
 		EmployeeCode: req.EmployeeCode,
 		ManagerID:    req.ManagerID,
 		Status:       "active",
 		JoiningDate:  time.Now(),
+		DepartmentID: req.DepartmentID,
 	}
 
 	createdUser, err := s.userRepo.Create(&user)
@@ -136,7 +133,7 @@ func (s *AuthService) DeleteUserById(id int) (models.User, error) {
 	return s.userRepo.DeleteUserById(id)
 }
 
-func (s *AuthService) UpdateUserById(c context.Context, id uint, req models.RegisterRequest) (models.User, error) {
+func (s *AuthService) UpdateUserById(c context.Context, id uint, req models.UpdateUserRequest) (models.User, error) {
 	user, err := s.userRepo.UpdateUserById(c, id, req)
 	if err != nil {
 		return models.User{}, err
@@ -165,7 +162,6 @@ func (s *AuthService) generateTokens(user *models.User) (models.AuthResponse, er
 	}, nil
 
 }
-
 
 func (s *AuthService) RefreshTokens(refreshToken string) (models.AuthResponse, models.User, error) {
 	claims, err := s.tokenService.ValidateRefreshToken(refreshToken)
@@ -209,8 +205,36 @@ func (s *AuthService) RefreshTokens(refreshToken string) (models.AuthResponse, m
 	return tokens, user, nil
 }
 
-
-
 func (s *AuthService) RevokeRefreshToken(tokenHash string) error {
 	return s.userRepo.RevokeRefreshToken(tokenHash)
+}
+
+func (s *AuthService) CreateUser(req models.RegisterRequest) (*models.User, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+
+	if err != nil {
+		return nil, err
+	}
+
+	user := models.User{
+		FullName:     req.Name,
+		Email:        req.Email,
+		Password:     string(hashedPassword),
+		RoleID:       req.RoleID,
+		EmployeeCode: req.EmployeeCode,
+		Status:       req.Status,
+		ManagerID:    req.ManagerID,
+		DepartmentID: req.DepartmentID,
+	}
+
+	if user.Status == "" {
+		user.Status = "active"
+	}
+
+	createdUser, err := s.userRepo.Create(&user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &createdUser, nil
 }

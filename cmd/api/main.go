@@ -1,11 +1,11 @@
 package main
 
 import (
-	
 	"log"
 	"os"
 	"time"
 
+	automigration "example.com/m/internal/Automigration"
 	"example.com/m/internal/common/storage"
 	"example.com/m/internal/config"
 	"example.com/m/internal/db"
@@ -21,6 +21,8 @@ import (
 	handlers_certification "example.com/m/internal/handlers/certification"
 	handlers_certificationrule "example.com/m/internal/handlers/certification_rule"
 	handlers_course "example.com/m/internal/handlers/course"
+	handlers_department "example.com/m/internal/handlers/department"
+	handlers_department_training_mapping "example.com/m/internal/handlers/department_training_mapping"
 	handlers_module "example.com/m/internal/handlers/module"
 	handlers_moduleprogress "example.com/m/internal/handlers/module_progress"
 	handlers_role "example.com/m/internal/handlers/role"
@@ -29,7 +31,6 @@ import (
 	handlers_trainingsession "example.com/m/internal/handlers/training_session"
 
 	"example.com/m/internal/middleware"
-	"example.com/m/internal/models"
 
 	"example.com/m/internal/repositories"
 	repositories_role "example.com/m/internal/repositories/Role"
@@ -45,6 +46,8 @@ import (
 	repositories_certification "example.com/m/internal/repositories/certification"
 	repositories_certificationrule "example.com/m/internal/repositories/certification_rule"
 	repositories_course "example.com/m/internal/repositories/course"
+	repositories_department "example.com/m/internal/repositories/department"
+	repositories_department_training_mapping "example.com/m/internal/repositories/department_training_mapping"
 	repositories_module "example.com/m/internal/repositories/module"
 	repositories_moduleDocument "example.com/m/internal/repositories/module_document"
 	repositories_moduleprogress "example.com/m/internal/repositories/module_progress"
@@ -67,6 +70,8 @@ import (
 	services_certification "example.com/m/internal/services/certification"
 	services_certificationrule "example.com/m/internal/services/certification_rule"
 	services_course "example.com/m/internal/services/course"
+	services_department "example.com/m/internal/services/department"
+	services_department_training_mapping "example.com/m/internal/services/department_training_mapping"
 	services_module "example.com/m/internal/services/module"
 	services_moduleprogress "example.com/m/internal/services/module_progress"
 	services_role "example.com/m/internal/services/role"
@@ -83,38 +88,8 @@ func main() {
 	// fmt.Printf("config: %+v\n", cfg)
 	database := db.SetupDB(cfg)
 
-	err := database.AutoMigrate(
-
-		&models.Role{},
-		&models.User{},
-		&models.RefreshToken{},
-
-		&models.Course{},
-		&models.Module{},
-
-		&models.AssignmentRule{},
-		&models.TrainingMapping{},
-		&models.TrainingAssignment{},
-		&models.ModuleProgress{},
-
-		&models.AssessmentRule{},
-		&models.Assessment{},
-		&models.AssessmentQuestion{},
-		&models.AssessmentQuestionOption{},
-		&models.AssessmentAttempt{},
-		&models.AssessmentAttemptAnswer{},
-
-		&models.CertificationRule{},
-		&models.Certification{},
-		&models.CertificateIssue{},
-
-		&models.Notification{},
-		&models.TrainingSession{},
-		&models.Attendance{},
-		&models.ModuleDocument{},
-	)
-	if err != nil {
-		log.Fatal("migration failed: ", err)
+	if err := automigration.RunAutoMigration(database, cfg.APP_ENV); err != nil {
+		log.Fatal("migration failed:", err)
 	}
 
 	seeders.SeedRoles(database)
@@ -328,6 +303,21 @@ func main() {
 	attendanceService := services_attendence.NewAttendanceService(attendanceRepo, trainingSessionRepo)
 	attendanceHandler := handlers_attendance.NewAttendanceHandler(attendanceService)
 
+	departmentRepo := repositories_department.NewDepartmentRepository(database)
+	departmentService := services_department.NewDepartmentService(departmentRepo)
+	departmentHandler := handlers_department.NewDepartmentHandler(departmentService)
+
+	departmentTrainingMappingRepo := repositories_department_training_mapping.NewDepartmentTrainingMappingRepository(database)
+
+	departmentTrainingMappingService := services_department_training_mapping.NewDepartmentTrainingMappingService(
+		departmentTrainingMappingRepo,
+		departmentRepo,
+		*courseRepo,
+	)
+
+	departmentTrainingMappingHandler := handlers_department_training_mapping.NewDepartmentTrainingMappingHandler(
+		departmentTrainingMappingService,
+	)
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "LMS backend is running",
@@ -358,6 +348,8 @@ func main() {
 		assignmentRuleHandler,
 		trainingSessionHandler,
 		attendanceHandler,
+		departmentHandler,
+		departmentTrainingMappingHandler,
 	)
 
 	router.GET("/health", func(c *gin.Context) {

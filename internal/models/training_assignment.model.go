@@ -22,4 +22,7 @@ type TrainingAssignment struct {
 	Notifications     []Notification     `gorm:"foreignKey:AssignmentID" json:"notifications,omitempty"`
 	CertificateIssues []CertificateIssue `gorm:"foreignKey:TrainingAssignmentID" json:"certificate_issues,omitempty"`
 	ModuleProgresses  []ModuleProgress   `gorm:"foreignKey:AssignmentID" json:"module_progresses,omitempty"`
+
+	DepartmentID *uint       `json:"department_id"`
+	Department   *Department `gorm:"foreignKey:DepartmentID" json:"department,omitempty"`
 }

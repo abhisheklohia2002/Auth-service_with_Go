@@ -37,6 +37,8 @@ type Config struct {
 	CLOUDINARY_CLOUD_NAME string
 	CLOUDINARY_API_KEY    string
 	CLOUDINARY_API_SECRET string
+
+	APP_ENV string
 }
 
 func getEnv(key string, fallback string) string {
@@ -114,5 +116,7 @@ func LoadDotenv() Config {
 		CLOUDINARY_CLOUD_NAME: getEnv("CLOUDINARY_CLOUD_NAME", ""),
 		CLOUDINARY_API_KEY:    getEnv("CLOUDINARY_API_KEY", ""),
 		CLOUDINARY_API_SECRET: getEnv("CLOUDINARY_API_SECRET", ""),
+
+		APP_ENV: getEnv("APP_ENV", ""),
 	}
 }

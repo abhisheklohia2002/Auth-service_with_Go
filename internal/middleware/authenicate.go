@@ -3,6 +3,7 @@ package middleware
 import (
 	"crypto/rsa"
 	"errors"
+	"log"
 	"net/http"
 
 	"example.com/m/internal/common"
@@ -64,6 +65,8 @@ func (m *AuthMiddleware) IsAuthMiddleware(allowedRoles ...string) gin.HandlerFun
 			return
 		}
 
+		log.Println("JWT role:", claims.Role)
+		log.Println("Allowed roles:", allowedRoles)
 		if len(allowedRoles) > 0 && !isRoleAllowed(claims.Role, allowedRoles) {
 			c.JSON(http.StatusForbidden, gin.H{
 				"error": "you do not have permission to access this resource",
