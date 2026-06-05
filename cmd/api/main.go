@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	automigration "example.com/m/internal/Automigration"
 	"example.com/m/internal/common/storage"
 	"example.com/m/internal/config"
 	"example.com/m/internal/db"
@@ -30,7 +31,6 @@ import (
 	handlers_trainingsession "example.com/m/internal/handlers/training_session"
 
 	"example.com/m/internal/middleware"
-	"example.com/m/internal/models"
 
 	"example.com/m/internal/repositories"
 	repositories_role "example.com/m/internal/repositories/Role"
@@ -88,41 +88,8 @@ func main() {
 	// fmt.Printf("config: %+v\n", cfg)
 	database := db.SetupDB(cfg)
 
-	err := database.AutoMigrate(
-
-		&models.Role{},
-		&models.User{},
-		&models.RefreshToken{},
-
-		&models.Course{},
-		&models.Module{},
-
-		&models.AssignmentRule{},
-		&models.TrainingMapping{},
-		&models.TrainingAssignment{},
-		&models.ModuleProgress{},
-
-		&models.AssessmentRule{},
-		&models.Assessment{},
-		&models.AssessmentQuestion{},
-		&models.AssessmentQuestionOption{},
-		&models.AssessmentAttempt{},
-		&models.AssessmentAttemptAnswer{},
-
-		&models.CertificationRule{},
-		&models.Certification{},
-		&models.CertificateIssue{},
-
-		&models.Notification{},
-		&models.TrainingSession{},
-		&models.Attendance{},
-		&models.ModuleDocument{},
-
-		&models.Department{},
-		&models.DepartmentTrainingMapping{},
-	)
-	if err != nil {
-		log.Fatal("migration failed: ", err)
+	if err := automigration.RunAutoMigration(database, cfg.APP_ENV); err != nil {
+		log.Fatal("migration failed:", err)
 	}
 
 	seeders.SeedRoles(database)

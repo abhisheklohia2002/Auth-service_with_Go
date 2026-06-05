@@ -61,15 +61,11 @@ func (s *AuthService) Register(req models.RegisterRequest) (models.AuthResponse,
 	if err != nil {
 		return models.AuthResponse{}, models.User{}, err
 	}
-	role, err := s.roleRepo.FindByName("employee")
-	if err != nil {
-		return models.AuthResponse{}, models.User{}, err
-	}
 	user := models.User{
 		FullName:     req.Name,
 		Email:        req.Email,
 		Password:     string(hashedPassword),
-		RoleID:       role.ID,
+		RoleID:       req.RoleID,
 		EmployeeCode: req.EmployeeCode,
 		ManagerID:    req.ManagerID,
 		Status:       "active",
@@ -211,4 +207,34 @@ func (s *AuthService) RefreshTokens(refreshToken string) (models.AuthResponse, m
 
 func (s *AuthService) RevokeRefreshToken(tokenHash string) error {
 	return s.userRepo.RevokeRefreshToken(tokenHash)
+}
+
+func (s *AuthService) CreateUser(req models.RegisterRequest) (*models.User, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+
+	if err != nil {
+		return nil, err
+	}
+
+	user := models.User{
+		FullName:     req.Name,
+		Email:        req.Email,
+		Password:     string(hashedPassword),
+		RoleID:       req.RoleID,
+		EmployeeCode: req.EmployeeCode,
+		Status:       req.Status,
+		ManagerID:    req.ManagerID,
+		DepartmentID: req.DepartmentID,
+	}
+
+	if user.Status == "" {
+		user.Status = "active"
+	}
+
+	createdUser, err := s.userRepo.Create(&user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &createdUser, nil
 }

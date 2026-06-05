@@ -51,11 +51,16 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	api := router.Group("/api")
 	auth := api.Group("/auth")
 	{
-		auth.POST("/create", authHandler.Register)
+		auth.POST("/register", authHandler.Register)
+		auth.POST(
+			"/create",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			authHandler.CreateUser,
+		)
 		auth.POST("/login", authHandler.Login)
 		auth.GET("/users", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), authHandler.UsersList)
 		auth.DELETE("/users/:id", authMiddleware.IsAuthMiddleware(string(enums.Admin)), authHandler.DeleteUserById)
-		auth.PUT("/users/:id", authHandler.UpdateUserById)
+		auth.PUT("/users/:id", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), authHandler.UpdateUserById)
 		auth.GET("self", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Employee), string(enums.Manager)), authHandler.Self)
 		auth.POST("/refresh", authHandler.RefreshToken)
 		auth.POST("/logout", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Employee), string(enums.Manager)), authHandler.Logout)
@@ -149,11 +154,11 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			trainingAssignmentHandler.Delete,
 		)
 		trainingAssignments.POST("/department",
-			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),trainingAssignmentHandler.AssignCourseToDepartment)
-		trainingAssignments.GET("/department", 
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), trainingAssignmentHandler.AssignCourseToDepartment)
+		trainingAssignments.GET("/department",
 			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
-		
-		trainingAssignmentHandler.FindDepartmentAssignments)
+
+			trainingAssignmentHandler.FindDepartmentAssignments)
 	}
 
 	moduleProgress := api.Group("/module-progress")

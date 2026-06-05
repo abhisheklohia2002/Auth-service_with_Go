@@ -322,7 +322,7 @@ func setAuthCookies(c *gin.Context, accessToken string, refreshToken string) {
 	isProd := os.Getenv("GIN_MODE") == "release"
 	httpOnly := true
 
-	accessTokenAge := 60
+	accessTokenAge := 60 * 60
 	refreshTokenAge := 365 * 24 * 60 * 60
 
 	if isProd {
@@ -364,4 +364,45 @@ func clearAuthCookies(c *gin.Context) {
 
 	c.SetCookie("access_token", "", -1, "/", "", isProd, httpOnly)
 	c.SetCookie("refresh_token", "", -1, "/", "", isProd, httpOnly)
+}
+
+func (h *AuthHandler) CreateUser(c *gin.Context) {
+	var req models.RegisterRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "failed to bind request",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	isExist, _, err := h.authService.UserExistsByEmail(req.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if isExist {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "email already exists",
+		})
+		return
+	}
+
+	user, err := h.authService.CreateUser(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "user creation failed",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "user created successfully",
+		"user":    user,
+	})
 }
