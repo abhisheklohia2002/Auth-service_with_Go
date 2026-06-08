@@ -398,6 +398,12 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			assessmentQuestionHandler.Create,
 		)
 
+		assessmentQuestions.POST(
+			"/:assessmentId/questions/bulk-upload",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assessmentQuestionHandler.CreateBulkQuestions,
+		)
+
 		assessmentQuestions.GET(
 			"/assessment/:assessmentId",
 			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
