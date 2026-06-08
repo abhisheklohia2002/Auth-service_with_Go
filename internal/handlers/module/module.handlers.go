@@ -179,13 +179,14 @@ func (ctrl *ModuleHandler) UploadPDF(c *gin.Context) {
 	defer file.Close()
 
 	title := c.PostForm("title")
-
+	publicId := c.PostForm("publicId")
 	document, err := ctrl.moduleService.UploadPDF(
 		c.Request.Context(),
 		uint(moduleID64),
 		title,
 		file,
 		fileHeader,
+		publicId,
 	)
 
 	if err != nil {
