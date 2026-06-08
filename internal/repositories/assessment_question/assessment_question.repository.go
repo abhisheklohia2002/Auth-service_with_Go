@@ -1,8 +1,10 @@
 package repositories_assessmentquestion
 
 import (
+	"context"
 	"errors"
 
+	"example.com/m/internal/dto"
 	"example.com/m/internal/models"
 
 	"gorm.io/gorm"
@@ -80,4 +82,47 @@ func (r *AssessmentQuestionRepository) Update(question *models.AssessmentQuestio
 
 func (r *AssessmentQuestionRepository) Delete(id uint) error {
 	return r.db.Delete(&models.AssessmentQuestion{}, id).Error
+}
+
+
+
+
+func (r *AssessmentQuestionRepository) CreateBulk(
+	ctx context.Context,
+	requests []dto.CreateAssessmentQuestionRequest,
+) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, req := range requests {
+			question := models.AssessmentQuestion{
+				AssessmentID: req.AssessmentID,
+				QuestionText: req.QuestionText,
+				QuestionType: req.QuestionType,
+				Marks:        req.Marks,
+				SequenceNo:   req.SequenceNo,
+				IsActive:     true,
+			}
+
+			if req.IsActive != nil {
+				question.IsActive = *req.IsActive
+			}
+
+			if err := tx.Create(&question).Error; err != nil {
+				return err
+			}
+
+			for _, opt := range req.Options {
+				option := models.AssessmentQuestionOption{
+					QuestionID: question.ID,
+					OptionText: opt.OptionText,
+					IsCorrect:  opt.IsCorrect,
+				}
+
+				if err := tx.Create(&option).Error; err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
 }

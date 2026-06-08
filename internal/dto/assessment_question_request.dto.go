@@ -23,3 +23,18 @@ type UpdateAssessmentQuestionRequest struct {
 	IsActive     *bool                                    `json:"is_active"`
 	Options      *[]CreateAssessmentQuestionOptionRequest `json:"options"`
 }
+
+
+type BulkQuestionUploadResponse struct {
+	Success     bool                 `json:"success"`
+	TotalRows   int                  `json:"total_rows"`
+	ValidRows   int                  `json:"valid_rows"`
+	InvalidRows int                  `json:"invalid_rows"`
+	Errors      []BulkQuestionError  `json:"errors"`
+}
+
+type BulkQuestionError struct {
+	Row     int    `json:"row"`
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
