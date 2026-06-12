@@ -2,6 +2,7 @@ package handlers_assessmentquestion
 
 import (
 	"net/http"
+	"strconv"
 
 	"example.com/m/internal/dto"
 	"example.com/m/internal/helper"
@@ -91,4 +92,45 @@ func (h *AssessmentQuestionHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "assessment question deleted successfully",
 	})
+}
+
+func (h *AssessmentQuestionHandler) CreateBulkQuestions(c *gin.Context) {
+	assessmentIDParam := c.Param("assessmentId")
+	assessmentID64, err := strconv.ParseUint(assessmentIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid assessment id"})
+		return
+	}
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "excel file is required"})
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "failed to open file"})
+		return
+	}
+	defer file.Close()
+
+	result, err := h.service.BulkUploadQuestions(
+		c.Request.Context(),
+		uint(assessmentID64),
+		file,
+		fileHeader,
+	)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+
+	if !result.Success {
+		c.JSON(http.StatusBadRequest, result)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }

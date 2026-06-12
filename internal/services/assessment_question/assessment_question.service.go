@@ -1,13 +1,20 @@
 package services_assessmentquestion
 
 import (
+	"context"
 	"errors"
+	"mime/multipart"
+	"path/filepath"
+	"strconv"
+	"strings"
 
 	"example.com/m/internal/dto"
+	"example.com/m/internal/helper"
 	"example.com/m/internal/models"
 	repositories_assessment "example.com/m/internal/repositories/assessment"
 	repositories_assessmentquestion "example.com/m/internal/repositories/assessment_question"
 	repositories_assessmentquestionoption "example.com/m/internal/repositories/assessment_question_option"
+	"github.com/xuri/excelize/v2"
 )
 
 type AssessmentQuestionService struct {
@@ -170,3 +177,243 @@ func validateQuestionOptions(questionType string, options []dto.CreateAssessment
 }
 
 
+
+func (s *AssessmentQuestionService) BulkUploadQuestions(
+	ctx context.Context,
+	assessmentID uint,
+	file multipart.File,
+	fileHeader *multipart.FileHeader,
+) (*dto.BulkQuestionUploadResponse, error) {
+	if file == nil || fileHeader == nil {
+		return nil, errors.New("file is required")
+	}
+
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	if ext != ".xlsx" {
+		return nil, errors.New("only .xlsx files are allowed")
+	}
+
+	if fileHeader.Size > 10*1024*1024 {
+		return nil, errors.New("file size must be less than 10MB")
+	}
+
+	assessment, err := s.assessmentRepo.FindByID(assessmentID)
+	if err != nil {
+		return nil, err
+	}
+
+	if assessment == nil {
+		return nil, errors.New("assessment not found")
+	}
+
+	xlsx, err := excelize.OpenReader(file)
+	if err != nil {
+		return nil, errors.New("invalid excel file")
+	}
+	defer xlsx.Close()
+
+	rows, err := xlsx.GetRows("Questions")
+	if err != nil {
+		return nil, errors.New("sheet 'Questions' not found")
+	}
+
+	if len(rows) < 2 {
+		return nil, errors.New("excel file has no question rows")
+	}
+
+	result := &dto.BulkQuestionUploadResponse{
+		TotalRows: len(rows) - 1,
+		Errors:    []dto.BulkQuestionError{},
+	}
+
+	var questions []dto.CreateAssessmentQuestionRequest
+
+	for i := 1; i < len(rows); i++ {
+		rowNumber := i + 1
+
+		question, rowErrors := parseAssessmentQuestionRow(rows[i], rowNumber, assessmentID)
+		if len(rowErrors) > 0 {
+			result.Errors = append(result.Errors, rowErrors...)
+			continue
+		}
+
+		questions = append(questions, question)
+	}
+
+	result.ValidRows = len(questions)
+	result.InvalidRows = result.TotalRows - result.ValidRows
+
+	if result.InvalidRows > 0 {
+		result.Success = false
+		return result, nil
+	}
+
+	if err := s.questionRepo.CreateBulk(ctx, questions); err != nil {
+		return nil, err
+	}
+
+	result.Success = true
+	return result, nil
+}
+
+
+
+func parseAssessmentQuestionRow(
+	row []string,
+	rowNumber int,
+	assessmentID uint,
+) (dto.CreateAssessmentQuestionRequest, []dto.BulkQuestionError) {
+	var rowErrors []dto.BulkQuestionError
+
+	get := func(index int) string {
+		if index >= len(row) {
+			return ""
+		}
+		return strings.TrimSpace(row[index])
+	}
+
+	sequenceNoText := get(0)
+	questionText := get(1)
+	questionType := strings.ToLower(get(2))
+	marksText := get(3)
+	isActiveText := strings.ToLower(get(4))
+	optionA := get(5)
+	optionB := get(6)
+	optionC := get(7)
+	optionD := get(8)
+	correctAnswer := strings.ToUpper(strings.ReplaceAll(get(9), " ", ""))
+
+	if questionText == "" {
+		rowErrors = append(rowErrors, dto.BulkQuestionError{
+			Row:     rowNumber,
+			Field:   "question_text",
+			Message: "question_text is required",
+		})
+	}
+
+	if !isValidQuestionType(questionType) {
+		rowErrors = append(rowErrors, dto.BulkQuestionError{
+			Row:     rowNumber,
+			Field:   "question_type",
+			Message: "question_type must be single_choice, multiple_choice, or true_false",
+		})
+	}
+
+	marks, err := strconv.Atoi(marksText)
+	if err != nil || marks <= 0 {
+		rowErrors = append(rowErrors, dto.BulkQuestionError{
+			Row:     rowNumber,
+			Field:   "marks",
+			Message: "marks must be a positive number",
+		})
+	}
+
+	sequenceNo, err := strconv.Atoi(sequenceNoText)
+	if err != nil || sequenceNo <= 0 {
+		rowErrors = append(rowErrors, dto.BulkQuestionError{
+			Row:     rowNumber,
+			Field:   "sequence_no",
+			Message: "sequence_no must be a positive number",
+		})
+	}
+
+	isActive := true
+	if isActiveText != "" {
+		parsedActive, err := strconv.ParseBool(isActiveText)
+		if err != nil {
+			rowErrors = append(rowErrors, dto.BulkQuestionError{
+				Row:     rowNumber,
+				Field:   "is_active",
+				Message: "is_active must be true or false",
+			})
+		} else {
+			isActive = parsedActive
+		}
+	}
+
+	options := []dto.CreateAssessmentQuestionOptionRequest{}
+
+	switch questionType {
+	case "single_choice", "multiple_choice":
+		optionMap := map[string]string{
+			"A": optionA,
+			"B": optionB,
+			"C": optionC,
+			"D": optionD,
+		}
+
+		for label, text := range optionMap {
+			if text != "" {
+				options = append(options, dto.CreateAssessmentQuestionOptionRequest{
+					OptionText: text,
+					IsCorrect:  helper.IsCorrectLabel(label, correctAnswer),
+				})
+			}
+		}
+
+		if len(options) < 2 {
+			rowErrors = append(rowErrors, dto.BulkQuestionError{
+				Row:     rowNumber,
+				Field:   "options",
+				Message: "at least 2 options are required",
+			})
+		}
+
+		if correctAnswer == "" {
+			rowErrors = append(rowErrors, dto.BulkQuestionError{
+				Row:     rowNumber,
+				Field:   "correct_answer",
+				Message: "correct_answer is required",
+			})
+		}
+
+		if questionType == "single_choice" && strings.Contains(correctAnswer, ",") {
+			rowErrors = append(rowErrors, dto.BulkQuestionError{
+				Row:     rowNumber,
+				Field:   "correct_answer",
+				Message: "single_choice allows only one correct answer",
+			})
+		}
+
+	case "true_false":
+		if optionA == "" {
+			optionA = "true"
+		}
+		if optionB == "" {
+			optionB = "false"
+		}
+
+		options = []dto.CreateAssessmentQuestionOptionRequest{
+			{
+				OptionText: optionA,
+				IsCorrect:  helper.IsCorrectLabel("A", correctAnswer),
+			},
+			{
+				OptionText: optionB,
+				IsCorrect:  helper.IsCorrectLabel("B", correctAnswer),
+			},
+		}
+
+		if correctAnswer != "A" && correctAnswer != "B" {
+			rowErrors = append(rowErrors, dto.BulkQuestionError{
+				Row:     rowNumber,
+				Field:   "correct_answer",
+				Message: "true_false correct_answer must be A or B",
+			})
+		}
+	}
+
+	if len(rowErrors) > 0 {
+		return dto.CreateAssessmentQuestionRequest{}, rowErrors
+	}
+
+	return dto.CreateAssessmentQuestionRequest{
+		AssessmentID: assessmentID,
+		QuestionText: questionText,
+		QuestionType: questionType,
+		Marks:        marks,
+		SequenceNo:   sequenceNo,
+		IsActive:     &isActive,
+		Options:      options,
+	}, nil
+}

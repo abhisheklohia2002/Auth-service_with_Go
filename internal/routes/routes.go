@@ -13,6 +13,9 @@ import (
 	handlers_certification "example.com/m/internal/handlers/certification"
 	handlers_certificationrule "example.com/m/internal/handlers/certification_rule"
 	handlers_course "example.com/m/internal/handlers/course"
+	handlers_department "example.com/m/internal/handlers/department"
+	handlers_department_training_mapping "example.com/m/internal/handlers/department_training_mapping"
+	handlers_entity "example.com/m/internal/handlers/entity"
 	handlers_module "example.com/m/internal/handlers/module"
 	handlers_moduleprogress "example.com/m/internal/handlers/module_progress"
 	handlers_role "example.com/m/internal/handlers/role"
@@ -43,18 +46,27 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	assignmentRuleHandler *handlers_assignments.AssignmentRuleHandler,
 	trainingsession *handlers_trainingsession.TrainingSessionHandler,
 	attendanceHandler *handlers_attendance.AttendanceHandler,
+	departmentHandler *handlers_department.DepartmentHandler,
+	departmentTrainingMappingHandler *handlers_department_training_mapping.DepartmentTrainingMappingHandler,
+	entityHandler *handlers_entity.EntityHandler,
 ) {
 	api := router.Group("/api")
 	auth := api.Group("/auth")
 	{
-		auth.POST("/create", authHandler.Register)
+		auth.POST("/register", authHandler.Register)
+		auth.POST(
+			"/create",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			authHandler.CreateUser,
+		)
 		auth.POST("/login", authHandler.Login)
 		auth.GET("/users", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), authHandler.UsersList)
 		auth.DELETE("/users/:id", authMiddleware.IsAuthMiddleware(string(enums.Admin)), authHandler.DeleteUserById)
-		auth.PUT("/users/:id", authHandler.UpdateUserById)
+		auth.PUT("/users/:id", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), authHandler.UpdateUserById)
 		auth.GET("self", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Employee), string(enums.Manager)), authHandler.Self)
 		auth.POST("/refresh", authHandler.RefreshToken)
 		auth.POST("/logout", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Employee), string(enums.Manager)), authHandler.Logout)
+		auth.POST("/bulk-users", authHandler.CreateBulkUsers)
 	}
 
 	courses := api.Group("/courses")
@@ -144,9 +156,16 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
 			trainingAssignmentHandler.Delete,
 		)
+		trainingAssignments.POST("/department",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), trainingAssignmentHandler.AssignCourseToDepartment)
+		trainingAssignments.GET("/department",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+
+			trainingAssignmentHandler.FindDepartmentAssignments)
 	}
 
 	moduleProgress := api.Group("/module-progress")
+	moduleProgress.Use(authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)))
 	{
 		moduleProgress.GET(
 			"/assignment/:assignmentId",
@@ -383,6 +402,12 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			assessmentQuestionHandler.Create,
 		)
 
+		assessmentQuestions.POST(
+			"/:assessmentId/questions/bulk-upload",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			assessmentQuestionHandler.CreateBulkQuestions,
+		)
+
 		assessmentQuestions.GET(
 			"/assessment/:assessmentId",
 			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
@@ -459,4 +484,30 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 		moduleDocuments.GET("/module/:moduleId", moduleHandler.FindByModuleID)
 		moduleDocuments.DELETE("/:documentId", moduleHandler.DeleteByIdDocument)
 	}
+
+	departments := api.Group("/departments")
+	{
+		departments.POST("", departmentHandler.Create)
+		departments.GET("", departmentHandler.GetAll)
+		departments.GET("/:id", departmentHandler.GetByID)
+		departments.PUT("/:id", departmentHandler.Update)
+		departments.DELETE("/:id", departmentHandler.Delete)
+		departments.GET("/:id/training-mappings", departmentTrainingMappingHandler.GetByDepartmentID)
+	}
+
+	departmentMappings := api.Group("/department-training-mappings")
+	{
+		departmentMappings.POST("", departmentTrainingMappingHandler.Create)
+		departmentMappings.GET("", departmentTrainingMappingHandler.GetAll)
+	}
+
+	entities := api.Group("/entities")
+	{
+		entities.POST("", entityHandler.CreateEntity)
+		entities.GET("", entityHandler.GetEntities)
+		entities.GET("/:id", entityHandler.GetEntityByID)
+		entities.PUT("/:id", entityHandler.UpdateEntity)
+		entities.DELETE("/:id", entityHandler.DeleteEntity)
+	}
+
 }

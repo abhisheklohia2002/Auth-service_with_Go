@@ -190,7 +190,7 @@ func (h *AuthHandler) DeleteUserById(c *gin.Context) {
 func (h *AuthHandler) UpdateUserById(c *gin.Context) {
 	id := c.Param("id")
 	num, _ := strconv.Atoi(id)
-	var req models.RegisterRequest
+	var req models.UpdateUserRequest
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -322,7 +322,7 @@ func setAuthCookies(c *gin.Context, accessToken string, refreshToken string) {
 	isProd := os.Getenv("GIN_MODE") == "release"
 	httpOnly := true
 
-	accessTokenAge := 60
+	accessTokenAge := 60 * 60
 	refreshTokenAge := 365 * 24 * 60 * 60
 
 	if isProd {
@@ -364,4 +364,81 @@ func clearAuthCookies(c *gin.Context) {
 
 	c.SetCookie("access_token", "", -1, "/", "", isProd, httpOnly)
 	c.SetCookie("refresh_token", "", -1, "/", "", isProd, httpOnly)
+}
+
+func (h *AuthHandler) CreateUser(c *gin.Context) {
+	var req models.RegisterRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "failed to bind request",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	isExist, _, err := h.authService.UserExistsByEmail(req.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if isExist {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "email already exists",
+		})
+		return
+	}
+
+	user, err := h.authService.CreateUser(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "user creation failed",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "user created successfully",
+		"user":    user,
+	})
+}
+
+func (h *AuthHandler) CreateBulkUsers(c *gin.Context) {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "excel file is required",
+		})
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "failed to open file",
+		})
+		return
+	}
+	defer file.Close()
+
+	result, err := h.authService.CreateBulkUsers(
+		c.Request.Context(),
+		file,
+		fileHeader,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "bulk users upload processed",
+		"data":    result,
+	})
 }

@@ -3,6 +3,9 @@ package services_module
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
+
 	"mime/multipart"
 	"path/filepath"
 	"strings"
@@ -42,7 +45,12 @@ func (s *ModuleService) UploadPDF(
 	title string,
 	file multipart.File,
 	fileHeader *multipart.FileHeader,
+	oldPublicID string,
 ) (*models.ModuleDocument, error) {
+	if file == nil || fileHeader == nil {
+		return nil, errors.New("file is required")
+	}
+
 	module, err := s.moduleRepo.FindByID(moduleID)
 	if err != nil {
 		return nil, err
@@ -71,7 +79,6 @@ func (s *ModuleService) UploadPDF(
 		fileHeader.Filename,
 		"lms/module-documents",
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -89,9 +96,20 @@ func (s *ModuleService) UploadPDF(
 
 	createdDocument, err := s.documentRepo.Create(&document)
 	if err != nil {
-		// Cleanup Cloudinary if DB insert fails
 		_ = s.uploader.Delete(ctx, uploadResult.PublicID)
 		return nil, err
+	}
+
+	if oldPublicID != "" {
+		fmt.Println(oldPublicID, "oldPublicID -------.")
+
+		if err := s.documentRepo.DeleteDocumentByPublicId(oldPublicID); err != nil {
+			log.Printf("failed to delete old PDF from Database: %v", err)
+		}
+
+		if err := s.uploader.Delete(ctx, oldPublicID); err != nil {
+			log.Printf("failed to delete old PDF from Cloudinary: %v", err)
+		}
 	}
 
 	return createdDocument, nil

@@ -31,7 +31,11 @@ func (r *UserRepository) Create(user *models.User) (models.User, error) {
 func (r *UserRepository) UsersList() ([]models.User, error) {
 	var users []models.User
 
-	err := r.db.Find(&users).Error
+	err := r.db.
+		Preload("Role").
+		Preload("Department").
+		Find(&users).Error
+
 	if err != nil {
 		return nil, err
 	}
@@ -53,17 +57,28 @@ func (r *UserRepository) DeleteUserById(id int) (models.User, error) {
 	return user, nil
 }
 
-func (r *UserRepository) UpdateUserById(ctx context.Context, id uint, req models.RegisterRequest) (*models.User, error) {
+func (r *UserRepository) UpdateUserById(ctx context.Context, id uint, req models.UpdateUserRequest) (*models.User, error) {
 	var user models.User
+
+	fullName := req.FullName
+	if fullName == "" {
+		fullName = req.Name
+	}
+
+	updates := map[string]interface{}{
+		"full_name":     fullName,
+		"email":         req.Email,
+		"employee_code": req.EmployeeCode,
+		"role_id":       req.RoleID,
+		"manager_id":    req.ManagerID,
+		"department_id": req.DepartmentID,
+		"status":        req.Status,
+	}
 
 	result := r.db.WithContext(ctx).
 		Model(&models.User{}).
 		Where("id = ?", id).
-		Updates(map[string]interface{}{
-			"name":     req.Name,
-			"email":    req.Email,
-			"password": req.Password,
-		})
+		Updates(updates)
 
 	if result.Error != nil {
 		return nil, result.Error
@@ -73,7 +88,11 @@ func (r *UserRepository) UpdateUserById(ctx context.Context, id uint, req models
 		return nil, gorm.ErrRecordNotFound
 	}
 
-	err := r.db.WithContext(ctx).First(&user, id).Error
+	err := r.db.WithContext(ctx).
+		Preload("Role").
+		Preload("Department").
+		First(&user, id).Error
+
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +147,7 @@ func (r *UserRepository) FindByIDWithRole(userID uint) (models.User, error) {
 
 	err := r.db.
 		Preload("Role").
+		Preload("Department").
 		First(&user, userID).Error
 
 	return user, err
@@ -138,6 +158,7 @@ func (r *UserRepository) FindByID(id uint) (*models.User, error) {
 
 	err := r.db.
 		Preload("Role").
+		Preload("Department").
 		First(&user, id).
 		Error
 
@@ -151,7 +172,6 @@ func (r *UserRepository) FindByID(id uint) (*models.User, error) {
 
 	return &user, nil
 }
-
 
 func (r *UserRepository) FindValidRefreshToken(tokenHash string) (*models.RefreshToken, error) {
 	var refreshToken models.RefreshToken
@@ -177,4 +197,56 @@ func (r *UserRepository) RevokeRefreshToken(tokenHash string) error {
 	return r.db.Model(&models.RefreshToken{}).
 		Where("token_hash = ? AND revoked_at IS NULL", tokenHash).
 		Update("revoked_at", &now).Error
+}
+
+func (r *UserRepository) FindActiveByDepartmentID(departmentID uint) ([]models.User, error) {
+	var users []models.User
+
+	err := r.db.
+		Preload("Role").
+		Preload("Department").
+		Where("department_id = ? AND status = ?", departmentID, "active").
+		Find(&users).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func (r *UserRepository) FindExistingUsersByEmailOrEmployeeID(
+	ctx context.Context,
+	emails []string,
+	employeeIDs []string,
+) ([]models.User, error) {
+	var users []models.User
+
+	if len(emails) == 0 && len(employeeIDs) == 0 {
+		return users, nil
+	}
+
+	err := r.db.WithContext(ctx).
+		Where("LOWER(email) IN ? OR UPPER(employee_code) IN ?", emails, employeeIDs).
+		Find(&users).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func (r *UserRepository) CreateUsersInBatches(
+	ctx context.Context,
+	users []models.User,
+	batchSize int,
+) error {
+	if len(users) == 0 {
+		return nil
+	}
+
+	return r.db.WithContext(ctx).
+		CreateInBatches(&users, batchSize).
+		Error
 }

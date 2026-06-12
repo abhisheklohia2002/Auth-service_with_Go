@@ -88,3 +88,10 @@ func (r *ModuleDocumentRepository) Update(document *models.ModuleDocument) (*mod
 func (r *ModuleDocumentRepository) Delete(id uint) error {
 	return r.db.Delete(&models.ModuleDocument{}, id).Error
 }
+
+func (r *ModuleDocumentRepository) DeleteDocumentByPublicId(publicID string) error {
+	return r.db.
+		Where("public_id = ?", publicID).
+		Delete(&models.ModuleDocument{}).
+		Error
+}

@@ -125,3 +125,24 @@ func (r *TrainingAssignmentRepository) Update(assignment *models.TrainingAssignm
 func (r *TrainingAssignmentRepository) Delete(id uint) error {
 	return r.db.Delete(&models.TrainingAssignment{}, id).Error
 }
+
+
+
+func (r *TrainingAssignmentRepository) FindDepartmentAssignments() ([]models.TrainingAssignment, error) {
+	var assignments []models.TrainingAssignment
+
+	err := r.db.
+		Preload("User").
+		Preload("Course").
+		Preload("Department").
+		Preload("AssignedByUser").
+		Where("assignment_source = ?", "department").
+		Order("id DESC").
+		Find(&assignments).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return assignments, nil
+}
