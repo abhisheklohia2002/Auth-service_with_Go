@@ -1,6 +1,5 @@
 package services_department
 
-
 import (
 	"errors"
 	"strings"
@@ -13,12 +12,14 @@ type CreateDepartmentRequest struct {
 	DepartmentName string `json:"department_name" binding:"required"`
 	Description    string `json:"description"`
 	IsActive       *bool  `json:"is_active"`
+	EntityID       uint   `json:"entity_id" binding:"required"`
 }
 
 type UpdateDepartmentRequest struct {
 	DepartmentName string `json:"department_name"`
 	Description    string `json:"description"`
 	IsActive       *bool  `json:"is_active"`
+	EntityID       *uint  `json:"entity_id"`
 }
 
 type DepartmentService interface {
@@ -46,6 +47,9 @@ func (s *departmentService) Create(req CreateDepartmentRequest) (*models.Departm
 	if name == "" {
 		return nil, errors.New("department_name is required")
 	}
+	if req.EntityID == 0 {
+		return nil, errors.New("entity_id is required")
+	}
 
 	isActive := true
 	if req.IsActive != nil {
@@ -53,6 +57,7 @@ func (s *departmentService) Create(req CreateDepartmentRequest) (*models.Departm
 	}
 
 	department := &models.Department{
+		EntityID:       req.EntityID,
 		DepartmentName: name,
 		Description:    strings.TrimSpace(req.Description),
 		IsActive:       isActive,
@@ -83,6 +88,13 @@ func (s *departmentService) Update(id uint, req UpdateDepartmentRequest) (*model
 		department.DepartmentName = strings.TrimSpace(req.DepartmentName)
 	}
 
+	if req.EntityID != nil {
+		if *req.EntityID == 0 {
+			return nil, errors.New("valid entity_id is required")
+		}
+
+		department.EntityID = *req.EntityID
+	}
 	department.Description = strings.TrimSpace(req.Description)
 
 	if req.IsActive != nil {

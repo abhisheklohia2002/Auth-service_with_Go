@@ -33,8 +33,6 @@ func ParseUintParam(c *gin.Context, paramName string) (uint, bool) {
 	return uint(id64), true
 }
 
-
-
 func IsValidQuestionType(questionType string) bool {
 	switch questionType {
 	case "single_choice", "multiple_choice", "true_false":
@@ -52,4 +50,28 @@ func IsCorrectLabel(label string, correctAnswer string) bool {
 		}
 	}
 	return false
+}
+
+func GetCell(row []string, index int) string {
+	if index >= len(row) {
+		return ""
+	}
+	return strings.TrimSpace(row[index])
+}
+
+func IsEmptyRow(row []string) bool {
+	for _, cell := range row {
+		if strings.TrimSpace(cell) != "" {
+			return false
+		}
+	}
+	return true
+}
+
+
+func IsHeaderRow(name, email, employeeCode, password string) bool {
+	return strings.EqualFold(name, "Full Name") ||
+		strings.EqualFold(email, "Email") ||
+		strings.EqualFold(employeeCode, "Employee Code") ||
+		strings.EqualFold(password, "Password")
 }

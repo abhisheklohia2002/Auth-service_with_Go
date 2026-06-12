@@ -15,6 +15,7 @@ import (
 	handlers_course "example.com/m/internal/handlers/course"
 	handlers_department "example.com/m/internal/handlers/department"
 	handlers_department_training_mapping "example.com/m/internal/handlers/department_training_mapping"
+	handlers_entity "example.com/m/internal/handlers/entity"
 	handlers_module "example.com/m/internal/handlers/module"
 	handlers_moduleprogress "example.com/m/internal/handlers/module_progress"
 	handlers_role "example.com/m/internal/handlers/role"
@@ -47,6 +48,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	attendanceHandler *handlers_attendance.AttendanceHandler,
 	departmentHandler *handlers_department.DepartmentHandler,
 	departmentTrainingMappingHandler *handlers_department_training_mapping.DepartmentTrainingMappingHandler,
+	entityHandler *handlers_entity.EntityHandler,
 ) {
 	api := router.Group("/api")
 	auth := api.Group("/auth")
@@ -64,6 +66,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 		auth.GET("self", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Employee), string(enums.Manager)), authHandler.Self)
 		auth.POST("/refresh", authHandler.RefreshToken)
 		auth.POST("/logout", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Employee), string(enums.Manager)), authHandler.Logout)
+		auth.POST("/bulk-users", authHandler.CreateBulkUsers)
 	}
 
 	courses := api.Group("/courses")
@@ -162,6 +165,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	}
 
 	moduleProgress := api.Group("/module-progress")
+	moduleProgress.Use(authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)))
 	{
 		moduleProgress.GET(
 			"/assignment/:assignmentId",
@@ -495,6 +499,15 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	{
 		departmentMappings.POST("", departmentTrainingMappingHandler.Create)
 		departmentMappings.GET("", departmentTrainingMappingHandler.GetAll)
+	}
+
+	entities := api.Group("/entities")
+	{
+		entities.POST("", entityHandler.CreateEntity)
+		entities.GET("", entityHandler.GetEntities)
+		entities.GET("/:id", entityHandler.GetEntityByID)
+		entities.PUT("/:id", entityHandler.UpdateEntity)
+		entities.DELETE("/:id", entityHandler.DeleteEntity)
 	}
 
 }

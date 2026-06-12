@@ -4,6 +4,7 @@ import (
 	"example.com/m/internal/models"
 	"gorm.io/gorm"
 )
+
 func RunAutoMigration(database *gorm.DB, env string) error {
 	if env == "production" {
 		return nil
@@ -40,5 +41,6 @@ func RunAutoMigration(database *gorm.DB, env string) error {
 
 		&models.Department{},
 		&models.DepartmentTrainingMapping{},
+		&models.Entity{},
 	)
 }

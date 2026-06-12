@@ -214,3 +214,39 @@ func (r *UserRepository) FindActiveByDepartmentID(departmentID uint) ([]models.U
 
 	return users, nil
 }
+
+func (r *UserRepository) FindExistingUsersByEmailOrEmployeeID(
+	ctx context.Context,
+	emails []string,
+	employeeIDs []string,
+) ([]models.User, error) {
+	var users []models.User
+
+	if len(emails) == 0 && len(employeeIDs) == 0 {
+		return users, nil
+	}
+
+	err := r.db.WithContext(ctx).
+		Where("LOWER(email) IN ? OR UPPER(employee_code) IN ?", emails, employeeIDs).
+		Find(&users).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func (r *UserRepository) CreateUsersInBatches(
+	ctx context.Context,
+	users []models.User,
+	batchSize int,
+) error {
+	if len(users) == 0 {
+		return nil
+	}
+
+	return r.db.WithContext(ctx).
+		CreateInBatches(&users, batchSize).
+		Error
+}

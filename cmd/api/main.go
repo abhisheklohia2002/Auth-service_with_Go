@@ -23,6 +23,7 @@ import (
 	handlers_course "example.com/m/internal/handlers/course"
 	handlers_department "example.com/m/internal/handlers/department"
 	handlers_department_training_mapping "example.com/m/internal/handlers/department_training_mapping"
+	handlers_entity "example.com/m/internal/handlers/entity"
 	handlers_module "example.com/m/internal/handlers/module"
 	handlers_moduleprogress "example.com/m/internal/handlers/module_progress"
 	handlers_role "example.com/m/internal/handlers/role"
@@ -48,6 +49,7 @@ import (
 	repositories_course "example.com/m/internal/repositories/course"
 	repositories_department "example.com/m/internal/repositories/department"
 	repositories_department_training_mapping "example.com/m/internal/repositories/department_training_mapping"
+	repositories_entity "example.com/m/internal/repositories/entity"
 	repositories_module "example.com/m/internal/repositories/module"
 	repositories_moduleDocument "example.com/m/internal/repositories/module_document"
 	repositories_moduleprogress "example.com/m/internal/repositories/module_progress"
@@ -72,6 +74,7 @@ import (
 	services_course "example.com/m/internal/services/course"
 	services_department "example.com/m/internal/services/department"
 	services_department_training_mapping "example.com/m/internal/services/department_training_mapping"
+	services_entity "example.com/m/internal/services/entity"
 	services_module "example.com/m/internal/services/module"
 	services_moduleprogress "example.com/m/internal/services/module_progress"
 	services_role "example.com/m/internal/services/role"
@@ -318,6 +321,11 @@ func main() {
 	departmentTrainingMappingHandler := handlers_department_training_mapping.NewDepartmentTrainingMappingHandler(
 		departmentTrainingMappingService,
 	)
+
+	entityRepo := repositories_entity.NewEntityRepository(database)
+	entityService := services_entity.NewEntityService(entityRepo)
+	entityHandler := handlers_entity.NewEntityHandler(entityService)
+
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "LMS backend is running",
@@ -350,6 +358,7 @@ func main() {
 		attendanceHandler,
 		departmentHandler,
 		departmentTrainingMappingHandler,
+		entityHandler,
 	)
 
 	router.GET("/health", func(c *gin.Context) {
