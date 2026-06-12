@@ -64,6 +64,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 		auth.GET("self", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Employee), string(enums.Manager)), authHandler.Self)
 		auth.POST("/refresh", authHandler.RefreshToken)
 		auth.POST("/logout", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Employee), string(enums.Manager)), authHandler.Logout)
+		auth.POST("/bulk-users",authHandler.CreateBulkUsers)
 	}
 
 	courses := api.Group("/courses")
@@ -162,6 +163,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	}
 
 	moduleProgress := api.Group("/module-progress")
+	moduleProgress.Use(authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)))
 	{
 		moduleProgress.GET(
 			"/assignment/:assignmentId",

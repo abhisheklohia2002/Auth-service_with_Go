@@ -406,3 +406,39 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 		"user":    user,
 	})
 }
+
+func (h *AuthHandler) CreateBulkUsers(c *gin.Context) {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "excel file is required",
+		})
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "failed to open file",
+		})
+		return
+	}
+	defer file.Close()
+
+	result, err := h.authService.CreateBulkUsers(
+		c.Request.Context(),
+		file,
+		fileHeader,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "bulk users upload processed",
+		"data":    result,
+	})
+}
