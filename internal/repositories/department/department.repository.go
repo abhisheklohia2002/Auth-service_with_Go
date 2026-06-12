@@ -28,7 +28,7 @@ func (r *departmentRepository) Create(department *models.Department) error {
 
 func (r *departmentRepository) GetByID(id uint) (*models.Department, error) {
 	var department models.Department
-	err := r.db.First(&department, id).Error
+	err := r.db.Preload("Entity").First(&department, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (r *departmentRepository) GetByID(id uint) (*models.Department, error) {
 
 func (r *departmentRepository) GetAll() ([]models.Department, error) {
 	var departments []models.Department
-	err := r.db.Order("id DESC").Find(&departments).Error
+	err := r.db.Preload("Entity").Order("id DESC").Find(&departments).Error
 	return departments, err
 }
 
