@@ -12,7 +12,7 @@ import (
 )
 
 func SetupDB(cfg config.Config) *gorm.DB {
-	// databaseURL := cfg.DATABASE_URL
+	databaseURL := cfg.DATABASE_URL
 
 	newLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags),
@@ -24,18 +24,18 @@ func SetupDB(cfg config.Config) *gorm.DB {
 		},
 	)
 
-	// if databaseURL != "" {
-	// 	log.Println("connecting to render database")
+	if databaseURL != "" {
+		log.Println("connecting to render database")
 
-	// 	database, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{
-	// 		Logger: newLogger,
-	// 	})
-	// 	if err != nil {
-	// 		log.Fatal("failed to connect render database: ", err)
-	// 	}
+		database, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{
+			Logger: newLogger,
+		})
+		if err != nil {
+			log.Fatal("failed to connect render database: ", err)
+		}
 
-	// 	return database
-	// }
+		return database
+	}
 
 	log.Println("connecting to local database")
 
