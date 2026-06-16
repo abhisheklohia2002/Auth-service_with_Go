@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"example.com/m/internal/dto"
+	"example.com/m/internal/helper"
 	"example.com/m/internal/models"
 	"example.com/m/internal/repositories"
 	repositories_assessment "example.com/m/internal/repositories/assessment"
@@ -84,18 +85,19 @@ func (s *AssessmentAttemptService) Create(req dto.CreateAssessmentAttemptRequest
 		return nil, err
 	}
 
-	maxAttempts := 1
-	retakeAllowed := false
-	passingScore := assessment.PassingScore
+	// maxAttempts := 1
+	// retakeAllowed := false
+	// passingScore := assessment.PassingScore
 
-	if assessment.Rule != nil {
-		maxAttempts = assessment.Rule.MaxAttempts
-		retakeAllowed = assessment.Rule.RetakeAllowed
+	// if assessment.Rule != nil {
+	// 	maxAttempts = assessment.Rule.MaxAttempts
+	// 	retakeAllowed = assessment.Rule.RetakeAllowed
 
-		if assessment.Rule.PassingScore > 0 {
-			passingScore = assessment.Rule.PassingScore
-		}
-	}
+	// 	if assessment.Rule.PassingScore > 0 {
+	// 		passingScore = assessment.Rule.PassingScore
+	// 	}
+	// }
+	maxAttempts, retakeAllowed, passingScore := helper.GetEffectiveAssessmentRule(assessment)
 
 	if previousAttempts > 0 && !retakeAllowed {
 		return nil, errors.New("retake is not allowed for this assessment")

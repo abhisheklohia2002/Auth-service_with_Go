@@ -152,3 +152,16 @@ func (r *ModuleProgressRepository) FindByUserAndModule(userID uint, moduleID uin
 
 	return &progress, nil
 }
+
+
+func (r *ModuleProgressRepository) ResetByAssignmentID(assignmentID uint) error {
+	return r.db.
+		Model(&models.ModuleProgress{}).
+		Where("assignment_id = ?", assignmentID).
+		Updates(map[string]interface{}{
+			"status":       "pending",
+			"started_at":   nil,
+			"completed_at": nil,
+		}).
+		Error
+}

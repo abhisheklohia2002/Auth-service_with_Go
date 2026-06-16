@@ -8,6 +8,7 @@ import (
 	"example.com/m/internal/dto"
 	"example.com/m/internal/models"
 	"example.com/m/internal/repositories"
+	repositories_assessmentattempt "example.com/m/internal/repositories/assessment_attempt"
 	repositories_course "example.com/m/internal/repositories/course"
 	repositories_module "example.com/m/internal/repositories/module"
 	repositories_moduleprogress "example.com/m/internal/repositories/module_progress"
@@ -22,6 +23,7 @@ type TrainingAssignmentService struct {
 	courseRepo             *repositories_course.CourseRepository
 	moduleRepo             *repositories_module.ModuleRepository
 	moduleProgressRepo     *repositories_moduleprogress.ModuleProgressRepository
+	assessmentAttemptRepo  *repositories_assessmentattempt.AssessmentAttemptRepository
 }
 
 type CreateDepartmentTrainingAssignmentRequest struct {
@@ -46,6 +48,7 @@ func NewTrainingAssignmentService(
 	courseRepo *repositories_course.CourseRepository,
 	moduleRepo *repositories_module.ModuleRepository,
 	moduleProgressRepo *repositories_moduleprogress.ModuleProgressRepository,
+	assessmentAttemptRepo *repositories_assessmentattempt.AssessmentAttemptRepository,
 ) *TrainingAssignmentService {
 	return &TrainingAssignmentService{
 		trainingAssignmentRepo: trainingAssignmentRepo,
@@ -54,6 +57,7 @@ func NewTrainingAssignmentService(
 		courseRepo:             courseRepo,
 		moduleRepo:             moduleRepo,
 		moduleProgressRepo:     moduleProgressRepo,
+		assessmentAttemptRepo:  assessmentAttemptRepo,
 	}
 }
 
@@ -231,6 +235,39 @@ func (s *TrainingAssignmentService) FindByUserID(userID uint) ([]models.Training
 	return s.trainingAssignmentRepo.FindByUserID(userID)
 }
 
+func (s *TrainingAssignmentService) Reactivate(id uint) (*models.TrainingAssignment, error) {
+	assignment, err := s.trainingAssignmentRepo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if assignment == nil {
+		return nil, errors.New("training assignment not found")
+	}
+
+	assignment.Status = "in_progress"
+	assignment.CompletionDate = nil
+	assignment.ImprovementStatus = "retake_allowed"
+
+	updated, err := s.trainingAssignmentRepo.Update(assignment)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.moduleProgressRepo.ResetByAssignmentID(assignment.ID); err != nil {
+		return nil, err
+	}
+
+	if err := s.assessmentAttemptRepo.DeleteByUserAndCourse(
+		assignment.UserID,
+		assignment.CourseID,
+	); err != nil {
+		return nil, err
+	}
+
+	return updated, nil
+}
+
 func (s *TrainingAssignmentService) UpdateStatus(id uint, req dto.UpdateTrainingAssignmentStatusRequest) (*models.TrainingAssignment, error) {
 	assignment, err := s.trainingAssignmentRepo.FindByID(id)
 	if err != nil {
@@ -282,8 +319,6 @@ func isValidAssignmentStatus(status string) bool {
 		return false
 	}
 }
-
-
 
 func (s *TrainingAssignmentService) AssignCourseToDepartment(
 	req CreateDepartmentTrainingAssignmentRequest,
@@ -380,8 +415,6 @@ func (s *TrainingAssignmentService) AssignCourseToDepartment(
 		SkippedExistingCount: skippedExistingCount,
 	}, nil
 }
-
-
 
 func (s *TrainingAssignmentService) FindDepartmentAssignments() ([]models.TrainingAssignment, error) {
 	return s.trainingAssignmentRepo.FindDepartmentAssignments()

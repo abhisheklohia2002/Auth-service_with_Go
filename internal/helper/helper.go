@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"example.com/m/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -74,4 +75,26 @@ func IsHeaderRow(name, email, employeeCode, password string) bool {
 		strings.EqualFold(email, "Email") ||
 		strings.EqualFold(employeeCode, "Employee Code") ||
 		strings.EqualFold(password, "Password")
+}
+
+
+
+func GetEffectiveAssessmentRule(assessment *models.Assessment) (maxAttempts int, retakeAllowed bool, passingScore int) {
+	maxAttempts = 1
+	retakeAllowed = false
+	passingScore = assessment.PassingScore
+
+	if assessment.Rule != nil {
+		if assessment.Rule.MaxAttempts > 0 {
+			maxAttempts = assessment.Rule.MaxAttempts
+		}
+
+		retakeAllowed = assessment.Rule.RetakeAllowed
+
+		if assessment.Rule.PassingScore > 0 {
+			passingScore = assessment.Rule.PassingScore
+		}
+	}
+
+	return maxAttempts, retakeAllowed, passingScore
 }

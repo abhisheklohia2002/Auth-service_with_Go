@@ -1,7 +1,5 @@
 package repositories_assessmentattempt
 
-
-
 import (
 	"errors"
 
@@ -121,4 +119,43 @@ func (r *AssessmentAttemptRepository) HasPassed(userID uint, assessmentID uint) 
 		Error
 
 	return count > 0, err
+}
+
+func (r *AssessmentAttemptRepository) DeleteByUserAndCourse(userID uint, courseID uint) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var attemptIDs []uint
+
+		if err := tx.
+			Model(&models.AssessmentAttempt{}).
+			Where(`
+				user_id = ?
+				AND assessment_id IN (
+					SELECT id FROM assessments WHERE course_id = ?
+				)
+			`, userID, courseID).
+			Pluck("id", &attemptIDs).
+			Error; err != nil {
+			return err
+		}
+
+		if len(attemptIDs) == 0 {
+			return nil
+		}
+
+		if err := tx.
+			Where("attempt_id IN ?", attemptIDs).
+			Delete(&models.AssessmentAttemptAnswer{}).
+			Error; err != nil {
+			return err
+		}
+
+		if err := tx.
+			Where("id IN ?", attemptIDs).
+			Delete(&models.AssessmentAttempt{}).
+			Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }

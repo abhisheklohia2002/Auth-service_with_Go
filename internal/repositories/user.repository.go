@@ -144,7 +144,7 @@ func (r *UserRepository) PersistRefreshToken(
 
 func (r *UserRepository) FindByIDWithRole(userID uint) (models.User, error) {
 	var user models.User
-
+	
 	err := r.db.
 		Preload("Role").
 		Preload("Department").

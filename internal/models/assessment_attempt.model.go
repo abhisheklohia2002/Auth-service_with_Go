@@ -13,5 +13,5 @@ type AssessmentAttempt struct {
 
 	Assessment Assessment                `gorm:"foreignKey:AssessmentID" json:"assessment,omitempty"`
 	User       User                      `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Answers    []AssessmentAttemptAnswer `gorm:"foreignKey:AttemptID" json:"answers,omitempty"`
+	Answers    []AssessmentAttemptAnswer `gorm:"foreignKey:AttemptID;constraint:OnDelete:CASCADE;" json:"answers,omitempty"`
 }

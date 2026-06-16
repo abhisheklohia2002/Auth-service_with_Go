@@ -150,7 +150,11 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			authMiddleware.IsAuthMiddleware(),
 			trainingAssignmentHandler.UpdateStatus,
 		)
-
+		trainingAssignments.PATCH(
+			"/:id/reactivate",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			trainingAssignmentHandler.Reactivate,
+		)
 		trainingAssignments.DELETE(
 			"/:id",
 			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
@@ -165,7 +169,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	}
 
 	moduleProgress := api.Group("/module-progress")
-	moduleProgress.Use(authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)))
+	moduleProgress.Use(authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager), string(enums.Employee)))
 	{
 		moduleProgress.GET(
 			"/assignment/:assignmentId",
@@ -443,7 +447,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 
 		assignmentRules.GET(
 			"/:id",
-			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
+			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager), string(enums.Employee)),
 			assignmentRuleHandler.FindByID,
 		)
 

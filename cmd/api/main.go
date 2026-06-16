@@ -208,6 +208,7 @@ func main() {
 		moduleProgressService,
 	)
 
+
 	trainingAssignmentService := services_trainingassignment.NewTrainingAssignmentService(
 		trainingAssignmentRepo,
 		trainingMappingRepo,
@@ -215,6 +216,7 @@ func main() {
 		courseRepo,
 		moduleRepo,
 		moduleProgressRepo,
+		assessmentAttemptRepo,
 	)
 
 	trainingAssignmentHandler := handlers_trainingassignment.NewTrainingAssignmentHandler(

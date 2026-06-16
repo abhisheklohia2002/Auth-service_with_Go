@@ -163,6 +163,26 @@ func (h *TrainingAssignmentHandler) UpdateStatus(c *gin.Context) {
 	})
 }
 
+func (h *TrainingAssignmentHandler) Reactivate(c *gin.Context) {
+	id, ok := parseUintParam(c, "id")
+	if !ok {
+		return
+	}
+
+	assignment, err := h.trainingAssignmentService.Reactivate(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "training assignment reactivated successfully",
+		"data":    assignment,
+	})
+}
+
 func (h *TrainingAssignmentHandler) Delete(c *gin.Context) {
 	id, ok := parseUintParam(c, "id")
 	if !ok {
