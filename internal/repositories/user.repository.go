@@ -144,7 +144,7 @@ func (r *UserRepository) PersistRefreshToken(
 
 func (r *UserRepository) FindByIDWithRole(userID uint) (models.User, error) {
 	var user models.User
-	
+
 	err := r.db.
 		Preload("Role").
 		Preload("Department").
@@ -249,4 +249,14 @@ func (r *UserRepository) CreateUsersInBatches(
 	return r.db.WithContext(ctx).
 		CreateInBatches(&users, batchSize).
 		Error
+}
+
+func (r *UserRepository) GetAllUserIDs(ctx context.Context) ([]uint, error) {
+	var userIDs []uint
+
+	err := r.db.WithContext(ctx).
+		Model(&models.User{}).
+		Pluck("id", &userIDs).Error
+
+	return userIDs, err
 }

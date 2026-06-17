@@ -42,5 +42,7 @@ func RunAutoMigration(database *gorm.DB, env string) error {
 		&models.Department{},
 		&models.DepartmentTrainingMapping{},
 		&models.Entity{},
+		&models.Notification{},
+		&models.NotificationRecipient{},
 	)
 }

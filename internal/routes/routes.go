@@ -18,7 +18,9 @@ import (
 	handlers_entity "example.com/m/internal/handlers/entity"
 	handlers_module "example.com/m/internal/handlers/module"
 	handlers_moduleprogress "example.com/m/internal/handlers/module_progress"
+	handlerNotification "example.com/m/internal/handlers/notifications"
 	handlers_role "example.com/m/internal/handlers/role"
+	handlerSSE "example.com/m/internal/handlers/sse"
 	handlers_trainingassignment "example.com/m/internal/handlers/training_assignment"
 	handlers_trainingmapping "example.com/m/internal/handlers/training_mapping"
 	handlers_trainingsession "example.com/m/internal/handlers/training_session"
@@ -49,6 +51,8 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 	departmentHandler *handlers_department.DepartmentHandler,
 	departmentTrainingMappingHandler *handlers_department_training_mapping.DepartmentTrainingMappingHandler,
 	entityHandler *handlers_entity.EntityHandler,
+	sseHandler *handlerSSE.SSEHandler,
+	notificationHandler *handlerNotification.NotificationHandler,
 ) {
 	api := router.Group("/api")
 	auth := api.Group("/auth")
@@ -522,6 +526,23 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 		entities.GET("/:id", entityHandler.GetEntityByID)
 		entities.PUT("/:id", entityHandler.UpdateEntity)
 		entities.DELETE("/:id", entityHandler.DeleteEntity)
+	}
+
+	admin := api.Group("/admin")
+	{
+		admin.POST("/notifications", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), notificationHandler.CreateNotification)
+	}
+
+	notificationUser := api.Group("")
+	notificationUser.Use(authMiddleware.IsAuthMiddleware(
+		string(enums.Admin),
+		string(enums.Manager),
+		string(enums.Employee),
+	))
+	{
+		notificationUser.GET("/notifications", notificationHandler.GetMyNotifications)
+		notificationUser.PATCH("/notifications/:notificationID/read", notificationHandler.MarkAsRead)
+		notificationUser.GET("/notifications/stream", sseHandler.StreamNotifications)
 	}
 
 }

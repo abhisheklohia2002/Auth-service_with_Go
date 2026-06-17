@@ -1,12 +1,17 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
 
 	automigration "example.com/m/internal/Automigration"
+	"example.com/m/internal/common/publisher"
+	redisclient "example.com/m/internal/common/redis"
+	"example.com/m/internal/common/sse"
 	"example.com/m/internal/common/storage"
+	"example.com/m/internal/common/subscriber"
 	"example.com/m/internal/config"
 	"example.com/m/internal/db"
 
@@ -26,7 +31,9 @@ import (
 	handlers_entity "example.com/m/internal/handlers/entity"
 	handlers_module "example.com/m/internal/handlers/module"
 	handlers_moduleprogress "example.com/m/internal/handlers/module_progress"
+	handlerNotification "example.com/m/internal/handlers/notifications"
 	handlers_role "example.com/m/internal/handlers/role"
+	handlerSSE "example.com/m/internal/handlers/sse"
 	handlers_trainingassignment "example.com/m/internal/handlers/training_assignment"
 	handlers_trainingmapping "example.com/m/internal/handlers/training_mapping"
 	handlers_trainingsession "example.com/m/internal/handlers/training_session"
@@ -53,6 +60,7 @@ import (
 	repositories_module "example.com/m/internal/repositories/module"
 	repositories_moduleDocument "example.com/m/internal/repositories/module_document"
 	repositories_moduleprogress "example.com/m/internal/repositories/module_progress"
+	repositoryNotification "example.com/m/internal/repositories/notifications"
 	repositories_trainingassignment "example.com/m/internal/repositories/training_assignment"
 	repositories_trainingmapping "example.com/m/internal/repositories/training_mapping"
 	repositories_trainingsession "example.com/m/internal/repositories/training_session"
@@ -77,6 +85,7 @@ import (
 	services_entity "example.com/m/internal/services/entity"
 	services_module "example.com/m/internal/services/module"
 	services_moduleprogress "example.com/m/internal/services/module_progress"
+	serviceNotification "example.com/m/internal/services/notifications"
 	services_role "example.com/m/internal/services/role"
 	services_trainingassignment "example.com/m/internal/services/training_assignment"
 	services_trainingmapping "example.com/m/internal/services/training_mapping"
@@ -329,6 +338,17 @@ func main() {
 	entityService := services_entity.NewEntityService(entityRepo)
 	entityHandler := handlers_entity.NewEntityHandler(entityService)
 
+	redis := redisclient.NewRedisClient("localhost:6368", "", 0)
+
+	notificationRepo := repositoryNotification.NewNotificationRepository(database)
+	notificationPublisher := publisher.NewRedisNotificationPublisher(redis)
+	notificationService := serviceNotification.NewNotificationService(notificationRepo, notificationPublisher, *userRepo)
+	notificationHandler := handlerNotification.NewNotificationHandler(notificationService)
+	notificationHub := sse.NewHub()
+	sseHandler := handlerSSE.NewSSEHandler(notificationHub)
+	notificationSubscriber := subscriber.NewNotificationSubscriber(redis, notificationHub)
+	go notificationSubscriber.Subscribe(context.Background())
+
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "LMS backend is running",
@@ -362,6 +382,8 @@ func main() {
 		departmentHandler,
 		departmentTrainingMappingHandler,
 		entityHandler,
+		sseHandler,
+		notificationHandler,
 	)
 
 	router.GET("/health", func(c *gin.Context) {
