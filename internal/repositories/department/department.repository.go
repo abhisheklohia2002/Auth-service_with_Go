@@ -1,6 +1,8 @@
 package repositories_department
 
 import (
+	"context"
+
 	"example.com/m/internal/models"
 	"gorm.io/gorm"
 )
@@ -12,6 +14,7 @@ type DepartmentRepository interface {
 	Update(department *models.Department) error
 	Delete(id uint) error
 	GetActiveUsers(departmentID uint) ([]models.User, error)
+	FindDepartmentsByIDs(ctx context.Context, ids []uint) ([]models.Department, error)
 }
 
 type departmentRepository struct {
@@ -59,4 +62,21 @@ func (r *departmentRepository) GetActiveUsers(departmentID uint) ([]models.User,
 		Find(&users).Error
 
 	return users, err
+}
+
+func (r *departmentRepository) FindDepartmentsByIDs(
+	ctx context.Context,
+	ids []uint,
+) ([]models.Department, error) {
+	if len(ids) == 0 {
+		return []models.Department{}, nil
+	}
+
+	var departments []models.Department
+
+	err := r.db.WithContext(ctx).
+		Where("id IN ?", ids).
+		Find(&departments).Error
+
+	return departments, err
 }

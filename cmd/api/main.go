@@ -146,7 +146,7 @@ func main() {
 
 	userRepo := repositories.NewUserRepository(database)
 	roleRepo := repositories.NewRoleRepository(database)
-
+	departmentRepo := repositories_department.NewDepartmentRepository(database)
 	courseRepo := repositories_course.NewCourseRepository(database)
 	moduleRepo := repositories_module.NewModuleRepository(database)
 
@@ -176,7 +176,7 @@ func main() {
 
 	roleModuleRepo := repositories_role.NewRoleRepository(database)
 
-	authService := services.NewAuthService(userRepo, tokenService, roleRepo)
+	authService := services.NewAuthService(userRepo, tokenService, roleRepo, departmentRepo)
 	authHandler := handlers.NewAuthHandler(authService, tokenService)
 
 	roleService := services_role.NewRoleService(roleModuleRepo)
@@ -310,7 +310,6 @@ func main() {
 	attendanceService := services_attendence.NewAttendanceService(attendanceRepo, trainingSessionRepo)
 	attendanceHandler := handlers_attendance.NewAttendanceHandler(attendanceService)
 
-	departmentRepo := repositories_department.NewDepartmentRepository(database)
 	departmentService := services_department.NewDepartmentService(departmentRepo)
 	departmentHandler := handlers_department.NewDepartmentHandler(departmentService)
 

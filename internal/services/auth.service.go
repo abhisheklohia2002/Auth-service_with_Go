@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/mail"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,14 +18,17 @@ import (
 	"example.com/m/internal/helper"
 	"example.com/m/internal/models"
 	"example.com/m/internal/repositories"
+	repositories_department "example.com/m/internal/repositories/department"
+
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
-	userRepo     *repositories.UserRepository
-	tokenService *TokenService
-	roleRepo     *repositories.RoleRepository
+	userRepo       *repositories.UserRepository
+	tokenService   *TokenService
+	roleRepo       *repositories.RoleRepository
+	departmentRepo repositories_department.DepartmentRepository
 }
 type JWK struct {
 	Kty string `json:"kty"`
@@ -46,11 +50,13 @@ func NewAuthService(
 	userRepo *repositories.UserRepository,
 	tokenService *TokenService,
 	roleRepo *repositories.RoleRepository,
+	departmentRepo repositories_department.DepartmentRepository,
 ) *AuthService {
 	return &AuthService{
-		userRepo:     userRepo,
-		tokenService: tokenService,
-		roleRepo:     roleRepo,
+		userRepo:       userRepo,
+		tokenService:   tokenService,
+		roleRepo:       roleRepo,
+		departmentRepo: departmentRepo,
 	}
 }
 
@@ -293,11 +299,12 @@ func (s *AuthService) CreateBulkUsers(
 	seenEmpIDs := make(map[string]int)
 
 	type excelUser struct {
-		Row        int
-		Name       string
-		Email      string
-		EmployeeID string
-		Password   string
+		Row          int
+		Name         string
+		Email        string
+		EmployeeID   string
+		Password     string
+		DepartmentID uint
 	}
 
 	validRows := []excelUser{}
@@ -317,6 +324,7 @@ func (s *AuthService) CreateBulkUsers(
 		email := strings.ToLower(strings.TrimSpace(helper.GetCell(row, 1)))
 		employeeID := strings.ToUpper(strings.TrimSpace(helper.GetCell(row, 2)))
 		password := strings.TrimSpace(helper.GetCell(row, 3))
+		departmentValue := strings.TrimSpace(helper.GetCell(row, 4))
 
 		if helper.IsHeaderRow(name, email, employeeID, password) {
 			continue
@@ -344,6 +352,33 @@ func (s *AuthService) CreateBulkUsers(
 			continue
 		}
 
+		var departmentID uint
+
+		if departmentValue != "" {
+			parsedDepartmentID, err := strconv.ParseUint(departmentValue, 10, 64)
+			if err != nil {
+				response.Errors = append(response.Errors, dto.BulkUsersError{
+					Row:     rowNumber,
+					Email:   email,
+					EmpID:   employeeID,
+					Message: "department must be a valid number",
+				})
+				continue
+			}
+
+			if parsedDepartmentID == 0 {
+				response.Errors = append(response.Errors, dto.BulkUsersError{
+					Row:     rowNumber,
+					Email:   email,
+					EmpID:   employeeID,
+					Message: "department must be greater than 0",
+				})
+				continue
+			}
+
+			departmentID = uint(parsedDepartmentID)
+		}
+
 		if previousRow, exists := seenEmails[email]; exists {
 			response.Errors = append(response.Errors, dto.BulkUsersError{
 				Row:     rowNumber,
@@ -368,17 +403,41 @@ func (s *AuthService) CreateBulkUsers(
 		seenEmpIDs[employeeID] = rowNumber
 
 		validRows = append(validRows, excelUser{
-			Row:        rowNumber,
-			Name:       name,
-			Email:      email,
-			EmployeeID: employeeID,
-			Password:   password,
+			Row:          rowNumber,
+			Name:         name,
+			Email:        email,
+			EmployeeID:   employeeID,
+			Password:     password,
+			DepartmentID: departmentID,
 		})
 	}
 
 	if len(validRows) == 0 {
 		response.FailedCount = len(response.Errors)
 		return response, nil
+	}
+
+	departmentIDs := make([]uint, 0)
+	departmentIDSet := make(map[uint]bool)
+
+	for _, user := range validRows {
+		if user.DepartmentID != 0 && !departmentIDSet[user.DepartmentID] {
+			departmentIDs = append(departmentIDs, user.DepartmentID)
+			departmentIDSet[user.DepartmentID] = true
+		}
+	}
+
+	departmentMap := make(map[uint]bool)
+
+	if len(departmentIDs) > 0 {
+		departments, err := s.departmentRepo.FindDepartmentsByIDs(ctx, departmentIDs)
+		if err != nil {
+			return nil, errors.New("failed to check departments")
+		}
+
+		for _, department := range departments {
+			departmentMap[department.ID] = true
+		}
 	}
 
 	emails := make([]string, 0, len(validRows))
@@ -429,6 +488,23 @@ func (s *AuthService) CreateBulkUsers(
 			continue
 		}
 
+		var departmentID *uint
+
+		if rowUser.DepartmentID != 0 {
+			if !departmentMap[rowUser.DepartmentID] {
+				response.Errors = append(response.Errors, dto.BulkUsersError{
+					Row:     rowUser.Row,
+					Email:   rowUser.Email,
+					EmpID:   rowUser.EmployeeID,
+					Message: "department does not exist",
+				})
+				continue
+			}
+
+			id := rowUser.DepartmentID
+			departmentID = &id
+		}
+
 		hashedPassword, err := bcrypt.GenerateFromPassword(
 			[]byte(rowUser.Password),
 			bcrypt.DefaultCost,
@@ -449,9 +525,10 @@ func (s *AuthService) CreateBulkUsers(
 			EmployeeCode: rowUser.EmployeeID,
 			Password:     string(hashedPassword),
 
-			RoleID:      3,
-			Status:      "active",
-			JoiningDate: time.Now(),
+			RoleID:       3,
+			Status:       "active",
+			JoiningDate:  time.Now(),
+			DepartmentID: departmentID,
 		})
 	}
 
