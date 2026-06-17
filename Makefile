@@ -1,21 +1,22 @@
 MIGRATIONS_DIR=migrations
-GOOSE_DRIVER=postgres
-APP_BIN=bin/api
 
 run:
 	go run ./cmd/api
 
 build:
-	go build -o $(APP_BIN) ./cmd/api
+	go build -o bin/api ./cmd/api
 
 migrate-up:
-	goose -dir $(MIGRATIONS_DIR) $(GOOSE_DRIVER) "$(DATABASE_URL)" up
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" up
 
 migrate-down:
-	goose -dir $(MIGRATIONS_DIR) $(GOOSE_DRIVER) "$(DATABASE_URL)" down
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" down 1
 
 migrate-status:
-	goose -dir $(MIGRATIONS_DIR) $(GOOSE_DRIVER) "$(DATABASE_URL)" status
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" version
 
 migrate-create:
-	goose -dir $(MIGRATIONS_DIR) create $(name) sql
+	migrate create -ext sql -dir $(MIGRATIONS_DIR) -seq $(name)
+
+migrate-force:
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" force $(version)
