@@ -1,22 +1,33 @@
-
 package redisclient
 
 import (
 	"context"
+	"log"
+	"os"
 
 	"github.com/redis/go-redis/v9"
 )
 
-func NewRedisClient(addr string, password string, db int) *redis.Client {
-	client := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: password,
-		DB:       db,
-	})
+func NewRedisClient() *redis.Client {
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "redis://localhost:6379"
+	}
+
+	log.Println("REDIS_URL exists:", redisURL != "")
+
+	opt, err := redis.ParseURL(redisURL)
+	if err != nil {
+		log.Fatalf("invalid REDIS_URL: %v", err)
+	}
+
+	client := redis.NewClient(opt)
 
 	if err := client.Ping(context.Background()).Err(); err != nil {
-		panic(err)
+		log.Fatalf("redis connection failed: %v", err)
 	}
+
+	log.Println("Redis connected successfully")
 
 	return client
 }

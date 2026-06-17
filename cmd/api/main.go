@@ -338,7 +338,8 @@ func main() {
 	entityService := services_entity.NewEntityService(entityRepo)
 	entityHandler := handlers_entity.NewEntityHandler(entityService)
 
-	redis := redisclient.NewRedisClient("localhost:6368", "", 0)
+	// redis := redisclient.NewRedisClient("localhost:6368", "", 0) //local
+	redis := redisclient.NewRedisClient()
 
 	notificationRepo := repositoryNotification.NewNotificationRepository(database)
 	notificationPublisher := publisher.NewRedisNotificationPublisher(redis)
