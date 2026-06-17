@@ -6,15 +6,18 @@ import (
 	"example.com/m/internal/dto"
 	"example.com/m/internal/models"
 	repositories_assessmentrule "example.com/m/internal/repositories/assessment_rule"
+	repositories_course "example.com/m/internal/repositories/course"
 )
 
 type AssessmentRuleService struct {
 	assessmentRuleRepo *repositories_assessmentrule.AssessmentRuleRepository
+	courseRepo         *repositories_course.CourseRepository
 }
 
-func NewAssessmentRuleService(assessmentRuleRepo *repositories_assessmentrule.AssessmentRuleRepository) *AssessmentRuleService {
+func NewAssessmentRuleService(assessmentRuleRepo *repositories_assessmentrule.AssessmentRuleRepository, courseRepo *repositories_course.CourseRepository) *AssessmentRuleService {
 	return &AssessmentRuleService{
 		assessmentRuleRepo: assessmentRuleRepo,
+		courseRepo:         courseRepo,
 	}
 }
 
@@ -94,4 +97,46 @@ func (s *AssessmentRuleService) Delete(id uint) error {
 	}
 
 	return s.assessmentRuleRepo.Delete(id)
+}
+
+func (s *AssessmentRuleService) CreateByCourseID(courseID uint, req dto.CreateAssessmentRuleRequest) (*models.AssessmentRule, error) {
+	course, err := s.courseRepo.FindByID(courseID)
+	if err != nil {
+		return nil, err
+	}
+
+	if course == nil {
+		return nil, errors.New("course not found")
+	}
+
+	if req.MaxAttempts <= 0 {
+		return nil, errors.New("max attempts must be greater than zero")
+	}
+
+	if req.PassingScore < 0 {
+		return nil, errors.New("passing score cannot be negative")
+	}
+
+	if req.EvaluationMethod == "" {
+		req.EvaluationMethod = "score"
+	}
+
+	existingRule, err := s.assessmentRuleRepo.FindByCourseID(courseID)
+	if err != nil {
+		return nil, err
+	}
+
+	if existingRule != nil {
+		return nil, errors.New("assessment rule already exists for this course")
+	}
+
+	rule := models.AssessmentRule{
+		CourseID:         courseID,
+		MaxAttempts:      req.MaxAttempts,
+		PassingScore:     req.PassingScore,
+		RetakeAllowed:    req.RetakeAllowed,
+		EvaluationMethod: req.EvaluationMethod,
+	}
+
+	return s.assessmentRuleRepo.Create(&rule)
 }

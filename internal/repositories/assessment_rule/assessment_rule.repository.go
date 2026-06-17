@@ -1,6 +1,5 @@
 package repositories_assessmentrule
 
-
 import (
 	"errors"
 
@@ -22,7 +21,19 @@ func (r *AssessmentRuleRepository) Create(rule *models.AssessmentRule) (*models.
 		return nil, err
 	}
 
-	return rule, nil
+	var created models.AssessmentRule
+
+	err := r.db.
+		Preload("Course").
+		Preload("Assessments").
+		First(&created, rule.ID).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &created, nil
 }
 
 func (r *AssessmentRuleRepository) FindAll() ([]models.AssessmentRule, error) {
@@ -62,4 +73,25 @@ func (r *AssessmentRuleRepository) Update(rule *models.AssessmentRule) (*models.
 
 func (r *AssessmentRuleRepository) Delete(id uint) error {
 	return r.db.Delete(&models.AssessmentRule{}, id).Error
+}
+
+func (r *AssessmentRuleRepository) FindByCourseID(courseID uint) (*models.AssessmentRule, error) {
+	var rule models.AssessmentRule
+
+	err := r.db.
+		Preload("Course").
+		Preload("Assessments").
+		Where("course_id = ?", courseID).
+		First(&rule).
+		Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &rule, nil
 }

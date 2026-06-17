@@ -96,3 +96,33 @@ func (h *CertificationRuleHandler) Delete(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "certification rule deleted successfully"})
 }
+
+func (h *CertificationRuleHandler) CreateByCourseID(c *gin.Context) {
+	courseID, ok := helper.ParseUintParam(c, "courseId")
+	if !ok {
+		return
+	}
+
+	var req dto.CreateCertificationRuleRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "failed to bind request",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	rule, err := h.service.CreateByCourseID(courseID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "certification rule created successfully",
+		"data":    rule,
+	})
+}
