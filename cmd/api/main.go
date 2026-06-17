@@ -159,6 +159,7 @@ func main() {
 	assignmentRuleService := services_assignments.NewAssignmentRuleService(
 		assignmentRuleRepo,
 		roleRepo,
+		courseRepo,
 	)
 
 	assignmentRuleHandler := handlers_assignments.NewAssignmentRuleHandler(assignmentRuleService)
@@ -208,7 +209,6 @@ func main() {
 		moduleProgressService,
 	)
 
-
 	trainingAssignmentService := services_trainingassignment.NewTrainingAssignmentService(
 		trainingAssignmentRepo,
 		trainingMappingRepo,
@@ -225,6 +225,7 @@ func main() {
 
 	assessmentRuleService := services_assessmentrule.NewAssessmentRuleService(
 		assessmentRuleRepo,
+		courseRepo,
 	)
 
 	assessmentRuleHandler := handlers_assessmentrule.NewAssessmentRuleHandler(
@@ -268,6 +269,7 @@ func main() {
 
 	certificationRuleService := services_certificationrule.NewCertificationRuleService(
 		certificationRuleRepo,
+		courseRepo,
 	)
 
 	certificationRuleHandler := handlers_certificationrule.NewCertificationRuleHandler(

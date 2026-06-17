@@ -254,6 +254,11 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
 			assessmentRuleHandler.Delete,
 		)
+		assessmentRules.POST(
+			"/course/:courseId",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
+			assessmentRuleHandler.CreateByCourseID,
+		)
 	}
 
 	assessments := api.Group("/assessments")
@@ -336,6 +341,11 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 
 	certificationRules := api.Group("/certification-rules")
 	{
+		certificationRules.POST(
+			"/course/:courseId",
+			authMiddleware.IsAuthMiddleware(string(enums.Admin)),
+			certificationRuleHandler.CreateByCourseID,
+		)
 		certificationRules.POST("", authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), certificationRuleHandler.Create)
 		certificationRules.GET("", authMiddleware.IsAuthMiddleware(), certificationRuleHandler.FindAll)
 		certificationRules.GET("/:id", authMiddleware.IsAuthMiddleware(), certificationRuleHandler.FindByID)

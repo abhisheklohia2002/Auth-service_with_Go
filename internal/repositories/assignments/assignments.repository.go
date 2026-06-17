@@ -21,7 +21,12 @@ func (r *AssignmentRuleRepository) Create(rule *models.AssignmentRule) (*models.
 	}
 
 	var created models.AssignmentRule
-	err := r.db.Preload("Role").First(&created, rule.ID).Error
+	err := r.db.
+		Preload("Course").
+		Preload("Role").
+		First(&created, rule.ID).
+		Error
+
 	return &created, err
 }
 
@@ -29,6 +34,7 @@ func (r *AssignmentRuleRepository) FindAll() ([]models.AssignmentRule, error) {
 	var rules []models.AssignmentRule
 
 	err := r.db.
+		Preload("Course").
 		Preload("Role").
 		Order("id DESC").
 		Find(&rules).
@@ -40,7 +46,11 @@ func (r *AssignmentRuleRepository) FindAll() ([]models.AssignmentRule, error) {
 func (r *AssignmentRuleRepository) FindByID(id uint) (*models.AssignmentRule, error) {
 	var rule models.AssignmentRule
 
-	err := r.db.Preload("Role").First(&rule, id).Error
+	err := r.db.
+		Preload("Course").
+		Preload("Role").
+		First(&rule, id).
+		Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -55,10 +65,29 @@ func (r *AssignmentRuleRepository) Update(rule *models.AssignmentRule) (*models.
 	}
 
 	var updated models.AssignmentRule
-	err := r.db.Preload("Role").First(&updated, rule.ID).Error
+	err := r.db.
+		Preload("Course").
+		Preload("Role").
+		First(&updated, rule.ID).
+		Error
+
 	return &updated, err
 }
 
 func (r *AssignmentRuleRepository) Delete(id uint) error {
 	return r.db.Delete(&models.AssignmentRule{}, id).Error
+}
+
+func (r *AssignmentRuleRepository) FindByCourseID(courseID uint) ([]models.AssignmentRule, error) {
+	var rules []models.AssignmentRule
+
+	err := r.db.
+		Preload("Course").
+		Preload("Role").
+		Where("course_id = ?", courseID).
+		Order("id DESC").
+		Find(&rules).
+		Error
+
+	return rules, err
 }

@@ -102,3 +102,33 @@ func (h *AssessmentRuleHandler) Delete(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "assessment rule deleted successfully"})
 }
+
+func (h *AssessmentRuleHandler) CreateByCourseID(c *gin.Context) {
+	courseID, ok := helper.ParseUintParam(c, "courseId")
+	if !ok {
+		return
+	}
+
+	var req dto.CreateAssessmentRuleRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "failed to bind request",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	rule, err := h.assessmentRuleService.CreateByCourseID(courseID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "assessment rule created successfully",
+		"data":    rule,
+	})
+}

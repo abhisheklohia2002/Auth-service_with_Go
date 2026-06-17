@@ -119,3 +119,23 @@ func (h *AssignmentRuleHandler) Delete(c *gin.Context) {
 		"message": "assignment rule deleted successfully",
 	})
 }
+
+func (h *AssignmentRuleHandler) FindByCourseID(c *gin.Context) {
+	courseID, ok := helper.ParseUintParam(c, "courseId")
+	if !ok {
+		return
+	}
+
+	rules, err := h.service.FindByCourseID(courseID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to fetch course assignment rules",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "course assignment rules fetched successfully",
+		"data":    rules,
+	})
+}
