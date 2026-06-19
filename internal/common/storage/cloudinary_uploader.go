@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"mime/multipart"
 	"path/filepath"
 	"strings"
@@ -54,4 +55,29 @@ func (u *CloudinaryUploader) Delete(ctx context.Context, publicID string) error 
 	})
 
 	return err
+}
+
+func (u *CloudinaryUploader) UploadImage(
+	ctx context.Context,
+	file multipart.File,
+	fileName string,
+	folder string,
+) (*interfaces.UploadResult, error) {
+	if file == nil {
+		return nil, errors.New("image file is required")
+	}
+
+	uploadResult, err := u.cld.Upload.Upload(ctx, file, uploader.UploadParams{
+		Folder:       folder,
+		ResourceType: "image",
+		PublicID:     strings.TrimSuffix(fileName, filepath.Ext(fileName)),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &interfaces.UploadResult{
+		URL:      uploadResult.SecureURL,
+		PublicID: uploadResult.PublicID,
+	}, nil
 }

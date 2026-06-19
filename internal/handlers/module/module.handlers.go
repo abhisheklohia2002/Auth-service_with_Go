@@ -178,8 +178,23 @@ func (ctrl *ModuleHandler) UploadPDF(c *gin.Context) {
 	}
 	defer file.Close()
 
+	thumbnailHeader, err := c.FormFile("thumbnail")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Thumbnail image is required"})
+		return
+	}
+
+	thumbnailFile, err := thumbnailHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Unable to open thumbnail image"})
+		return
+	}
+	defer thumbnailFile.Close()
+
 	title := c.PostForm("title")
 	publicId := c.PostForm("publicId")
+	oldThumbnailPublicID := c.PostForm("oldThumbnailPublicId")
+
 	document, err := ctrl.moduleService.UploadPDF(
 		c.Request.Context(),
 		uint(moduleID64),
@@ -187,6 +202,9 @@ func (ctrl *ModuleHandler) UploadPDF(c *gin.Context) {
 		file,
 		fileHeader,
 		publicId,
+		thumbnailFile,
+		thumbnailHeader,
+		oldThumbnailPublicID,
 	)
 
 	if err != nil {

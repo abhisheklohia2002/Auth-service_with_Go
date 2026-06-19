@@ -3,7 +3,6 @@ package services_module
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 
 	"mime/multipart"
@@ -46,9 +45,16 @@ func (s *ModuleService) UploadPDF(
 	file multipart.File,
 	fileHeader *multipart.FileHeader,
 	oldPublicID string,
+	thumbnail multipart.File,
+	thumbnailHeader *multipart.FileHeader,
+	oldThumbnailPublicID string,
 ) (*models.ModuleDocument, error) {
 	if file == nil || fileHeader == nil {
 		return nil, errors.New("file is required")
+	}
+
+	if thumbnail == nil || thumbnailHeader == nil {
+		return nil, errors.New("thumbnail image is required")
 	}
 
 	module, err := s.moduleRepo.FindByID(moduleID)
@@ -69,6 +75,18 @@ func (s *ModuleService) UploadPDF(
 		return nil, errors.New("PDF size must be less than 25MB")
 	}
 
+	thumbnailExt := strings.ToLower(filepath.Ext(thumbnailHeader.Filename))
+	if thumbnailExt != ".jpg" &&
+		thumbnailExt != ".jpeg" &&
+		thumbnailExt != ".png" &&
+		thumbnailExt != ".webp" {
+		return nil, errors.New("only JPG, PNG, or WEBP thumbnail images are allowed")
+	}
+
+	if thumbnailHeader.Size > 5*1024*1024 {
+		return nil, errors.New("thumbnail size must be less than 5MB")
+	}
+
 	if title == "" {
 		title = strings.TrimSuffix(fileHeader.Filename, ext)
 	}
@@ -83,32 +101,52 @@ func (s *ModuleService) UploadPDF(
 		return nil, err
 	}
 
-	document := models.ModuleDocument{
-		ModuleID: moduleID,
-		Title:    title,
-		FileName: fileHeader.Filename,
-		FileURL:  uploadResult.URL,
-		PublicID: uploadResult.PublicID,
-		FileType: "pdf",
-		FileSize: fileHeader.Size,
-		IsActive: true,
-	}
-
-	createdDocument, err := s.documentRepo.Create(&document)
+	thumbnailUploadResult, err := s.uploader.UploadImage(
+		ctx,
+		thumbnail,
+		thumbnailHeader.Filename,
+		"lms/module-thumbnails",
+	)
 	if err != nil {
 		_ = s.uploader.Delete(ctx, uploadResult.PublicID)
 		return nil, err
 	}
 
-	if oldPublicID != "" {
-		fmt.Println(oldPublicID, "oldPublicID -------.")
+	document := models.ModuleDocument{
+		ModuleID:          moduleID,
+		Title:             title,
+		FileName:          fileHeader.Filename,
+		FileURL:           uploadResult.URL,
+		PublicID:          uploadResult.PublicID,
+		FileType:          "pdf",
+		FileSize:          fileHeader.Size,
+		ThumbnailName:     thumbnailHeader.Filename,
+		ThumbnailURL:      thumbnailUploadResult.URL,
+		ThumbnailPublicID: thumbnailUploadResult.PublicID,
+		ThumbnailSize:     thumbnailHeader.Size,
+		IsActive:          true,
+	}
 
+	createdDocument, err := s.documentRepo.Create(&document)
+	if err != nil {
+		_ = s.uploader.Delete(ctx, uploadResult.PublicID)
+		_ = s.uploader.Delete(ctx, thumbnailUploadResult.PublicID)
+		return nil, err
+	}
+
+	if oldPublicID != "" {
 		if err := s.documentRepo.DeleteDocumentByPublicId(oldPublicID); err != nil {
-			log.Printf("failed to delete old PDF from Database: %v", err)
+			log.Printf("failed to delete old PDF from database: %v", err)
 		}
 
 		if err := s.uploader.Delete(ctx, oldPublicID); err != nil {
 			log.Printf("failed to delete old PDF from Cloudinary: %v", err)
+		}
+	}
+
+	if oldThumbnailPublicID != "" {
+		if err := s.uploader.Delete(ctx, oldThumbnailPublicID); err != nil {
+			log.Printf("failed to delete old thumbnail from Cloudinary: %v", err)
 		}
 	}
 
