@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS module_documents CASCADE;

@@ -36,7 +36,7 @@ func (r *AssignmentRuleRepository) FindAll() ([]models.AssignmentRule, error) {
 	err := r.db.
 		Preload("Course").
 		Preload("Role").
-		Order("id DESC").
+		Order("assignment_rule_id DESC").
 		Find(&rules).
 		Error
 

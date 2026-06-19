@@ -12,6 +12,11 @@ type ModuleDocument struct {
 	FileURL  string `gorm:"type:text;not null" json:"file_url"`
 	PublicID string `gorm:"size:255" json:"public_id"`
 
+	ThumbnailName     string `gorm:"size:255" json:"thumbnail_name"`
+	ThumbnailURL      string `gorm:"type:text" json:"thumbnail_url"`
+	ThumbnailPublicID string `gorm:"size:255" json:"thumbnail_public_id"`
+	ThumbnailSize     int64  `json:"thumbnail_size"`
+
 	FileType string `gorm:"size:20;not null;default:'pdf'" json:"file_type"`
 	FileSize int64  `gorm:"not null" json:"file_size"`
 

@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS department_training_mappings CASCADE;

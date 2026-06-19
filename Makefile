@@ -1,17 +1,22 @@
-DATABASE_URL=postgresql://gorm_demo_user:rTDC3Or8XAb6Nr8731YDBhN40cQGJvRH@dpg-d8cgmbh9rddc73d9o8f0-a/gorm_demo
 MIGRATIONS_DIR=migrations
 
 run:
 	go run ./cmd/api
 
+build:
+	go build -o bin/api ./cmd/api
+
 migrate-up:
-	goose -dir $(MIGRATIONS_DIR) postgres "$(DATABASE_URL)" up
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" up
 
 migrate-down:
-	goose -dir $(MIGRATIONS_DIR) postgres "$(DATABASE_URL)" down
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" down 1
 
 migrate-status:
-	goose -dir $(MIGRATIONS_DIR) postgres "$(DATABASE_URL)" status
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" version
 
 migrate-create:
-	goose -dir $(MIGRATIONS_DIR) create $(name) sql
+	migrate create -ext sql -dir $(MIGRATIONS_DIR) -seq $(name)
+
+migrate-force:
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" force $(version)

@@ -14,5 +14,11 @@ type UploadResult struct {
 
 type FileUploader interface {
 	UploadPDF(ctx context.Context, file multipart.File, filename string, folder string) (*UploadResult, error)
+	UploadImage(
+		ctx context.Context,
+		file multipart.File,
+		fileName string,
+		folder string,
+	) (*UploadResult, error)
 	Delete(ctx context.Context, publicID string) error
 }
