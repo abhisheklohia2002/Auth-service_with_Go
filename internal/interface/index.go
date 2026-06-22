@@ -20,5 +20,15 @@ type FileUploader interface {
 		fileName string,
 		folder string,
 	) (*UploadResult, error)
+
+	UploadVideo(
+		ctx context.Context,
+		file multipart.File,
+		fileName string,
+		folder string,
+	) (*UploadResult, error)
+
 	Delete(ctx context.Context, publicID string) error
+
+	DeleteVideo(ctx context.Context, publicID string) error
 }

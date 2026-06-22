@@ -99,3 +99,62 @@ func (r *ModuleRepository) Update(module *models.Module) (*models.Module, error)
 func (r *ModuleRepository) Delete(id uint) error {
 	return r.db.Delete(&models.Module{}, id).Error
 }
+
+func (r *ModuleRepository) UpsertByModuleID(
+	video *models.ModuleVideo,
+) (*models.ModuleVideo, error) {
+	var existingVideo models.ModuleVideo
+
+	err := r.db.
+		Where("module_id = ?", video.ModuleID).
+		First(&existingVideo).
+		Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			if err := r.db.Create(video).Error; err != nil {
+				return nil, err
+			}
+
+			return video, nil
+		}
+
+		return nil, err
+	}
+
+	existingVideo.CourseID = video.CourseID
+	existingVideo.Title = video.Title
+	existingVideo.VideoName = video.VideoName
+	existingVideo.VideoURL = video.VideoURL
+	existingVideo.VideoPublicID = video.VideoPublicID
+	existingVideo.VideoSize = video.VideoSize
+	existingVideo.VideoType = video.VideoType
+	existingVideo.IsActive = video.IsActive
+
+	if err := r.db.Save(&existingVideo).Error; err != nil {
+		return nil, err
+	}
+
+	return &existingVideo, nil
+}
+
+func (r *ModuleRepository) FindByModuleID(
+	moduleID uint,
+) (*models.ModuleVideo, error) {
+	var video models.ModuleVideo
+
+	err := r.db.
+		Where("module_id = ? AND is_active = ?", moduleID, true).
+		First(&video).
+		Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	return &video, nil
+}

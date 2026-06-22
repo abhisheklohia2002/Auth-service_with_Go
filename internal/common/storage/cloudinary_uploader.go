@@ -81,3 +81,42 @@ func (u *CloudinaryUploader) UploadImage(
 		PublicID: uploadResult.PublicID,
 	}, nil
 }
+
+func (u *CloudinaryUploader) DeleteVideo(ctx context.Context, publicID string) error {
+	if publicID == "" {
+		return nil
+	}
+
+	_, err := u.cld.Upload.Destroy(ctx, uploader.DestroyParams{
+		PublicID:     publicID,
+		ResourceType: "video",
+	})
+
+	return err
+}
+
+func (u *CloudinaryUploader) UploadVideo(
+	ctx context.Context,
+	file multipart.File,
+	fileName string,
+	folder string,
+) (*interfaces.UploadResult, error) {
+	if file == nil {
+		return nil, errors.New("video file is required")
+	}
+
+	uploadResult, err := u.cld.Upload.Upload(ctx, file, uploader.UploadParams{
+		Folder:       folder,
+		ResourceType: "video",
+		PublicID:     strings.TrimSuffix(fileName, filepath.Ext(fileName)),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &interfaces.UploadResult{
+		URL:      uploadResult.SecureURL,
+		PublicID: uploadResult.PublicID,
+		FileType: "video",
+	}, nil
+}

@@ -1,8 +1,10 @@
 package handlers_module
 
 import (
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"example.com/m/internal/dto"
 	"example.com/m/internal/helper"
@@ -276,5 +278,106 @@ func (ctrl *ModuleHandler) DeleteByIdDocument(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Document deleted successfully",
+	})
+}
+
+func (ctrl *ModuleHandler) UploadModuleVideo(c *gin.Context) {
+	log.Printf("hi I am Running")
+	moduleIDParam := c.Param("moduleId")
+
+	moduleID64, err := strconv.ParseUint(moduleIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid module id"})
+		return
+	}
+
+	courseIDParam := c.PostForm("course_id")
+
+	courseID64, err := strconv.ParseUint(courseIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid course id"})
+		return
+	}
+	start := time.Now()
+	videoHeader, err := c.FormFile("video")
+	log.Printf("FormFile took: %v", time.Since(start))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Video file is required"})
+		return
+	}
+	openStart := time.Now()
+	videoFile, err := videoHeader.Open()
+	log.Printf("Open file took: %v", time.Since(openStart))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Unable to open video file"})
+		return
+	}
+	defer videoFile.Close()
+
+	title := c.PostForm("title")
+	oldVideoPublicID := c.PostForm("oldVideoPublicId")
+	uploadStart := time.Now()
+	video, err := ctrl.moduleService.UploadModuleVideo(
+		c.Request.Context(),
+		uint(courseID64),
+		uint(moduleID64),
+		title,
+		videoFile,
+		videoHeader,
+		oldVideoPublicID,
+	)
+
+	log.Printf("Service upload took: %v", time.Since(uploadStart))
+
+	log.Printf("Total video request took: %v", time.Since(start))
+	if err != nil {
+		status := http.StatusInternalServerError
+
+		switch err.Error() {
+		case "module not found":
+			status = http.StatusNotFound
+		case "module does not belong to course",
+			"only MP4, MOV, WEBM, or MKV video files are allowed",
+			"video size must be less than 100MB":
+			status = http.StatusBadRequest
+		}
+
+		c.JSON(status, gin.H{"message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Video uploaded successfully",
+		"video":   video,
+	})
+}
+
+func (ctrl *ModuleHandler) GetModuleVideo(c *gin.Context) {
+	moduleIDParam := c.Param("moduleId")
+
+	moduleID64, err := strconv.ParseUint(moduleIDParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid module id"})
+		return
+	}
+
+	video, err := ctrl.moduleService.GetModuleVideo(
+		c.Request.Context(),
+		uint(moduleID64),
+	)
+	if err != nil {
+		status := http.StatusInternalServerError
+
+		switch err.Error() {
+		case "module not found":
+			status = http.StatusNotFound
+		}
+
+		c.JSON(status, gin.H{"message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"video": video,
 	})
 }

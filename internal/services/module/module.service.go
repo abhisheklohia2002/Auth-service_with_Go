@@ -299,3 +299,106 @@ func (s *ModuleService) DeleteByIdDocument(id uint) error {
 
 	return s.documentRepo.Delete(id)
 }
+
+func (s *ModuleService) UploadModuleVideo(
+	ctx context.Context,
+	courseID uint,
+	moduleID uint,
+	title string,
+	video multipart.File,
+	videoHeader *multipart.FileHeader,
+	oldVideoPublicID string,
+) (*models.ModuleVideo, error) {
+	if video == nil || videoHeader == nil {
+		return nil, errors.New("video file is required")
+	}
+
+	module, err := s.moduleRepo.FindByID(moduleID)
+	if err != nil {
+		return nil, err
+	}
+
+	if module == nil {
+		return nil, errors.New("module not found")
+	}
+
+	if module.CourseID != courseID {
+		return nil, errors.New("module does not belong to course")
+	}
+
+	videoExt := strings.ToLower(filepath.Ext(videoHeader.Filename))
+
+	if videoExt != ".mp4" &&
+		videoExt != ".mov" &&
+		videoExt != ".webm" &&
+		videoExt != ".mkv" {
+		return nil, errors.New("only MP4, MOV, WEBM, or MKV video files are allowed")
+	}
+
+	if videoHeader.Size > 100*1024*1024 {
+		return nil, errors.New("video size must be less than 100MB")
+	}
+
+	if title == "" {
+		title = strings.TrimSuffix(videoHeader.Filename, videoExt)
+	}
+
+	uploadResult, err := s.uploader.UploadVideo(
+		ctx,
+		video,
+		videoHeader.Filename,
+		"lms/module-videos",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	moduleVideo := models.ModuleVideo{
+		CourseID:      courseID,
+		ModuleID:      moduleID,
+		Title:         title,
+		VideoName:     videoHeader.Filename,
+		VideoURL:      uploadResult.URL,
+		VideoPublicID: uploadResult.PublicID,
+		VideoSize:     videoHeader.Size,
+		VideoType:     "video",
+		IsActive:      true,
+	}
+
+	createdVideo, err := s.moduleRepo.UpsertByModuleID(&moduleVideo)
+	if err != nil {
+		_ = s.uploader.DeleteVideo(ctx, uploadResult.PublicID)
+		return nil, err
+	}
+
+	if oldVideoPublicID != "" {
+		if err := s.uploader.DeleteVideo(ctx, oldVideoPublicID); err != nil {
+			log.Printf("failed to delete old video from Cloudinary: %v", err)
+		}
+	}
+
+	return createdVideo, nil
+}
+
+
+
+func (s *ModuleService) GetModuleVideo(
+	ctx context.Context,
+	moduleID uint,
+) (*models.ModuleVideo, error) {
+	module, err := s.moduleRepo.FindByID(moduleID)
+	if err != nil {
+		return nil, err
+	}
+
+	if module == nil {
+		return nil, errors.New("module not found")
+	}
+
+	video, err := s.moduleRepo.FindByModuleID(moduleID)
+	if err != nil {
+		return nil, err
+	}
+
+	return video, nil
+}

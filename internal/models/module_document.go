@@ -26,5 +26,6 @@ type ModuleDocument struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	Module Module `gorm:"foreignKey:ModuleID" json:"module,omitempty"`
+	Module       Module        `gorm:"foreignKey:ModuleID" json:"module,omitempty"`
+	ModuleVideos []ModuleVideo `gorm:"foreignKey:ModuleID;references:ModuleID" json:"module_videos"`
 }
