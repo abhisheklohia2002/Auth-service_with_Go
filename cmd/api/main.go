@@ -333,6 +333,7 @@ func main() {
 
 	departmentTrainingMappingHandler := handlers_department_training_mapping.NewDepartmentTrainingMappingHandler(
 		departmentTrainingMappingService,
+		authService,
 	)
 
 	entityRepo := repositories_entity.NewEntityRepository(database)

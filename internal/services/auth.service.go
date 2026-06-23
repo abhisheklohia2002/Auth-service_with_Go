@@ -42,8 +42,8 @@ type JWKS struct {
 	Keys []JWK `json:"keys"`
 }
 
-func (s *AuthService) UsersList() ([]models.User, error) {
-	return s.userRepo.UsersList()
+func (s *AuthService) UsersList(departmentId uint) ([]models.User, error) {
+	return s.userRepo.UsersList(departmentId)
 }
 
 func NewAuthService(
@@ -139,9 +139,6 @@ func (s *AuthService) Login(user *models.User, password string) (models.AuthResp
 	return tokens, nil
 }
 
-func (s *AuthService) Userslist() ([]models.User, error) {
-	return s.userRepo.UsersList()
-}
 func (s *AuthService) DeleteUserById(id int) (models.User, error) {
 	return s.userRepo.DeleteUserById(id)
 }
@@ -256,6 +253,7 @@ func (s *AuthService) CreateBulkUsers(
 	ctx context.Context,
 	file multipart.File,
 	fileHeader *multipart.FileHeader,
+	departmentIDFromRoute *uint,
 ) (*dto.BulkUsersUploadResponse, error) {
 
 	if file == nil || fileHeader == nil {
@@ -291,6 +289,21 @@ func (s *AuthService) CreateBulkUsers(
 		return nil, errors.New("excel file has no user data")
 	}
 
+	// Validate route department once if department ID is passed from department table upload
+	if departmentIDFromRoute != nil {
+		departments, err := s.departmentRepo.FindDepartmentsByIDs(
+			ctx,
+			[]uint{*departmentIDFromRoute},
+		)
+		if err != nil {
+			return nil, errors.New("failed to check department")
+		}
+
+		if len(departments) == 0 {
+			return nil, errors.New("department does not exist")
+		}
+	}
+
 	response := &dto.BulkUsersUploadResponse{
 		Errors: []dto.BulkUsersError{},
 	}
@@ -324,7 +337,6 @@ func (s *AuthService) CreateBulkUsers(
 		email := strings.ToLower(strings.TrimSpace(helper.GetCell(row, 1)))
 		employeeID := strings.ToUpper(strings.TrimSpace(helper.GetCell(row, 2)))
 		password := strings.TrimSpace(helper.GetCell(row, 3))
-		departmentValue := strings.TrimSpace(helper.GetCell(row, 4))
 
 		if helper.IsHeaderRow(name, email, employeeID, password) {
 			continue
@@ -354,29 +366,39 @@ func (s *AuthService) CreateBulkUsers(
 
 		var departmentID uint
 
-		if departmentValue != "" {
-			parsedDepartmentID, err := strconv.ParseUint(departmentValue, 10, 64)
-			if err != nil {
-				response.Errors = append(response.Errors, dto.BulkUsersError{
-					Row:     rowNumber,
-					Email:   email,
-					EmpID:   employeeID,
-					Message: "department must be a valid number",
-				})
-				continue
-			}
+		// Priority 1: department ID from route
+		// Example: /departments/5/users/bulk-upload
+		if departmentIDFromRoute != nil {
+			departmentID = *departmentIDFromRoute
+		} else {
+			// Priority 2: department ID from Excel column
+			// Column index 4 means 5th column: DepartmentID
+			departmentValue := strings.TrimSpace(helper.GetCell(row, 4))
 
-			if parsedDepartmentID == 0 {
-				response.Errors = append(response.Errors, dto.BulkUsersError{
-					Row:     rowNumber,
-					Email:   email,
-					EmpID:   employeeID,
-					Message: "department must be greater than 0",
-				})
-				continue
-			}
+			if departmentValue != "" {
+				parsedDepartmentID, err := strconv.ParseUint(departmentValue, 10, 64)
+				if err != nil {
+					response.Errors = append(response.Errors, dto.BulkUsersError{
+						Row:     rowNumber,
+						Email:   email,
+						EmpID:   employeeID,
+						Message: "department must be a valid number",
+					})
+					continue
+				}
 
-			departmentID = uint(parsedDepartmentID)
+				if parsedDepartmentID == 0 {
+					response.Errors = append(response.Errors, dto.BulkUsersError{
+						Row:     rowNumber,
+						Email:   email,
+						EmpID:   employeeID,
+						Message: "department must be greater than 0",
+					})
+					continue
+				}
+
+				departmentID = uint(parsedDepartmentID)
+			}
 		}
 
 		if previousRow, exists := seenEmails[email]; exists {
@@ -417,26 +439,31 @@ func (s *AuthService) CreateBulkUsers(
 		return response, nil
 	}
 
-	departmentIDs := make([]uint, 0)
-	departmentIDSet := make(map[uint]bool)
-
-	for _, user := range validRows {
-		if user.DepartmentID != 0 && !departmentIDSet[user.DepartmentID] {
-			departmentIDs = append(departmentIDs, user.DepartmentID)
-			departmentIDSet[user.DepartmentID] = true
-		}
-	}
-
 	departmentMap := make(map[uint]bool)
 
-	if len(departmentIDs) > 0 {
-		departments, err := s.departmentRepo.FindDepartmentsByIDs(ctx, departmentIDs)
-		if err != nil {
-			return nil, errors.New("failed to check departments")
+	if departmentIDFromRoute != nil {
+		// Already validated above
+		departmentMap[*departmentIDFromRoute] = true
+	} else {
+		departmentIDs := make([]uint, 0)
+		departmentIDSet := make(map[uint]bool)
+
+		for _, user := range validRows {
+			if user.DepartmentID != 0 && !departmentIDSet[user.DepartmentID] {
+				departmentIDs = append(departmentIDs, user.DepartmentID)
+				departmentIDSet[user.DepartmentID] = true
+			}
 		}
 
-		for _, department := range departments {
-			departmentMap[department.ID] = true
+		if len(departmentIDs) > 0 {
+			departments, err := s.departmentRepo.FindDepartmentsByIDs(ctx, departmentIDs)
+			if err != nil {
+				return nil, errors.New("failed to check departments")
+			}
+
+			for _, department := range departments {
+				departmentMap[department.ID] = true
+			}
 		}
 	}
 

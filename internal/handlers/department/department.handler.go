@@ -1,10 +1,10 @@
 package handlers_department
 
-
 import (
 	"net/http"
 	"strconv"
 
+	"example.com/m/internal/dto"
 	services_department "example.com/m/internal/services/department"
 	"github.com/gin-gonic/gin"
 )
@@ -18,7 +18,7 @@ func NewDepartmentHandler(service services_department.DepartmentService) *Depart
 }
 
 func (h *DepartmentHandler) Create(c *gin.Context) {
-	var req services_department.CreateDepartmentRequest
+	var req dto.CreateDepartmentRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -86,7 +86,7 @@ func (h *DepartmentHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var req services_department.UpdateDepartmentRequest
+	var req dto.UpdateDepartmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),

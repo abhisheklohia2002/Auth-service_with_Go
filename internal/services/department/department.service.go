@@ -4,29 +4,18 @@ import (
 	"errors"
 	"strings"
 
+	"example.com/m/internal/dto"
 	"example.com/m/internal/models"
 	repositories_department "example.com/m/internal/repositories/department"
 )
 
-type CreateDepartmentRequest struct {
-	DepartmentName string `json:"department_name" binding:"required"`
-	Description    string `json:"description"`
-	IsActive       *bool  `json:"is_active"`
-	EntityID       uint   `json:"entity_id" binding:"required"`
-}
 
-type UpdateDepartmentRequest struct {
-	DepartmentName string `json:"department_name"`
-	Description    string `json:"description"`
-	IsActive       *bool  `json:"is_active"`
-	EntityID       *uint  `json:"entity_id"`
-}
 
 type DepartmentService interface {
-	Create(req CreateDepartmentRequest) (*models.Department, error)
+	Create(req dto.CreateDepartmentRequest) (*models.Department, error)
 	GetByID(id uint) (*models.Department, error)
 	GetAll() ([]models.Department, error)
-	Update(id uint, req UpdateDepartmentRequest) (*models.Department, error)
+	Update(id uint, req dto.UpdateDepartmentRequest) (*models.Department, error)
 	Delete(id uint) error
 }
 
@@ -42,7 +31,7 @@ func NewDepartmentService(
 	}
 }
 
-func (s *departmentService) Create(req CreateDepartmentRequest) (*models.Department, error) {
+func (s *departmentService) Create(req dto.CreateDepartmentRequest) (*models.Department, error) {
 	name := strings.TrimSpace(req.DepartmentName)
 	if name == "" {
 		return nil, errors.New("department_name is required")
@@ -78,7 +67,7 @@ func (s *departmentService) GetAll() ([]models.Department, error) {
 	return s.departmentRepo.GetAll()
 }
 
-func (s *departmentService) Update(id uint, req UpdateDepartmentRequest) (*models.Department, error) {
+func (s *departmentService) Update(id uint, req dto.UpdateDepartmentRequest) (*models.Department, error) {
 	department, err := s.departmentRepo.GetByID(id)
 	if err != nil {
 		return nil, err
