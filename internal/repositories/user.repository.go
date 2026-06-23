@@ -28,14 +28,18 @@ func (r *UserRepository) Create(user *models.User) (models.User, error) {
 	return *user, nil
 }
 
-func (r *UserRepository) UsersList() ([]models.User, error) {
+func (r *UserRepository) UsersList(departmentID uint) ([]models.User, error) {
 	var users []models.User
 
-	err := r.db.
+	query := r.db.
 		Preload("Role").
-		Preload("Department").
-		Find(&users).Error
+		Preload("Department")
 
+	if departmentID != 0 {
+		query = query.Where("department_id = ?", departmentID)
+	}
+
+	err := query.Find(&users).Error
 	if err != nil {
 		return nil, err
 	}

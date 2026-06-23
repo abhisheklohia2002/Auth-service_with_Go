@@ -513,6 +513,10 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 		departments.PUT("/:id", departmentHandler.Update)
 		departments.DELETE("/:id", departmentHandler.Delete)
 		departments.GET("/:id/training-mappings", departmentTrainingMappingHandler.GetByDepartmentID)
+		departments.POST(
+			"/:department_id/users/bulk-upload",
+			departmentTrainingMappingHandler.BulkUploadUsersToDepartment,
+		)
 	}
 
 	departmentMappings := api.Group("/department-training-mappings")

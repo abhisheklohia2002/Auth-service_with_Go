@@ -158,7 +158,21 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 func (h *AuthHandler) UsersList(c *gin.Context) {
-	users, err := h.authService.UsersList()
+	departmentIDQuery := c.Query("department_id")
+	var departmentID uint
+
+	if departmentIDQuery != "" {
+		parsedDepartmentID, err := strconv.ParseUint(departmentIDQuery, 10, 64)
+		if err != nil || parsedDepartmentID == 0 {
+			c.JSON(400, gin.H{
+				"error": "department_id must be a valid number greater than 0",
+			})
+			return
+		}
+
+		departmentID = uint(parsedDepartmentID)
+	}
+	users, err := h.authService.UsersList(departmentID)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"error": "failed to fetch users",
@@ -429,6 +443,7 @@ func (h *AuthHandler) CreateBulkUsers(c *gin.Context) {
 		c.Request.Context(),
 		file,
 		fileHeader,
+		nil,
 	)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
