@@ -12,6 +12,8 @@ type Course struct {
 	TotalDurationMinutes uint      `gorm:"not null;default:0" json:"total_duration_minutes"`
 	CreatedByUserID      uint      `gorm:"not null" json:"created_by_user_id"`
 	CreatedByUser        User      `gorm:"foreignKey:CreatedByUserID" json:"created_by_user,omitempty"`
+	ThumbnailURL         string    `gorm:"type:text" json:"thumbnail_url"`
+	ThumbnailPublicID    string    `gorm:"size:255" json:"thumbnail_public_id"`
 
 	Modules             []Module             `gorm:"foreignKey:CourseID" json:"modules,omitempty"`
 	Assessments         []Assessment         `gorm:"foreignKey:CourseID" json:"assessments,omitempty"`

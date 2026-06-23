@@ -1,6 +1,7 @@
 package handlers_course
 
 import (
+	"mime/multipart"
 	"net/http"
 	"strconv"
 
@@ -23,7 +24,7 @@ func NewCourseHandler(courseService *services_course.CourseService) *CourseHandl
 func (h *CourseHandler) CreateCourse(c *gin.Context) {
 	var req dto.CreateCourseRequest
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "failed to bind request",
 			"details": err.Error(),
@@ -47,7 +48,31 @@ func (h *CourseHandler) CreateCourse(c *gin.Context) {
 		return
 	}
 
-	course, err := h.courseService.CreateCourse(req, userID)
+	var thumbnailFile multipart.File
+	var thumbnailHeader *multipart.FileHeader
+
+	fileHeader, err := c.FormFile("thumbnail")
+	if err == nil {
+		file, err := fileHeader.Open()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "failed to open thumbnail file",
+			})
+			return
+		}
+		defer file.Close()
+
+		thumbnailFile = file
+		thumbnailHeader = fileHeader
+	}
+
+	course, err := h.courseService.CreateCourse(
+		c.Request.Context(),
+		req,
+		userID,
+		thumbnailFile,
+		thumbnailHeader,
+	)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -110,7 +135,7 @@ func (h *CourseHandler) UpdateCourse(c *gin.Context) {
 
 	var req dto.UpdateCourseRequest
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "failed to bind request",
 			"details": err.Error(),
@@ -118,7 +143,31 @@ func (h *CourseHandler) UpdateCourse(c *gin.Context) {
 		return
 	}
 
-	course, err := h.courseService.UpdateCourse(id, req)
+	var thumbnailFile multipart.File
+	var thumbnailHeader *multipart.FileHeader
+
+	fileHeader, err := c.FormFile("thumbnail")
+	if err == nil {
+		file, err := fileHeader.Open()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "failed to open thumbnail file",
+			})
+			return
+		}
+		defer file.Close()
+
+		thumbnailFile = file
+		thumbnailHeader = fileHeader
+	}
+
+	course, err := h.courseService.UpdateCourse(
+		c.Request.Context(),
+		id,
+		req,
+		thumbnailFile,
+		thumbnailHeader,
+	)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
