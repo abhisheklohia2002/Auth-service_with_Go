@@ -158,3 +158,27 @@ func (r *ModuleRepository) FindByModuleID(
 
 	return &video, nil
 }
+
+func (r *ModuleRepository) SumDurationByCourseID(courseID uint) (uint, error) {
+	var total uint
+
+	err := r.db.
+		Model(&models.Module{}).
+		Where("course_id = ?", courseID).
+		Select("COALESCE(SUM(duration_minutes), 0)").
+		Scan(&total).Error
+
+	return total, err
+}
+
+func (r *ModuleRepository) SumDurationByCourseIDExcludingModule(courseID uint, moduleID uint) (uint, error) {
+	var total uint
+
+	err := r.db.
+		Model(&models.Module{}).
+		Where("course_id = ? AND id <> ?", courseID, moduleID).
+		Select("COALESCE(SUM(duration_minutes), 0)").
+		Scan(&total).Error
+
+	return total, err
+}

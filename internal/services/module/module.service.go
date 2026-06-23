@@ -154,12 +154,34 @@ func (s *ModuleService) UploadPDF(
 }
 
 func (s *ModuleService) Create(req dto.CreateModuleRequest) (*models.Module, error) {
+	req.ModuleTitle = strings.TrimSpace(req.ModuleTitle)
+	req.ModuleDescription = strings.TrimSpace(req.ModuleDescription)
+
+	if req.ModuleTitle == "" {
+		return nil, errors.New("module title is required")
+	}
+
+	if req.DurationMinutes == 0 {
+		return nil, errors.New("module duration minutes must be greater than 0")
+	}
+
 	course, err := s.courseRepo.FindByID(req.CourseID)
 	if err != nil {
 		return nil, err
 	}
 	if course == nil {
 		return nil, errors.New("course not found")
+	}
+
+	existingDuration, err := s.moduleRepo.SumDurationByCourseID(req.CourseID)
+	if err != nil {
+		return nil, err
+	}
+
+	newTotalDuration := existingDuration + req.DurationMinutes
+
+	if newTotalDuration > course.TotalDurationMinutes {
+		return nil, errors.New("total module duration cannot exceed course total duration")
 	}
 
 	isActive := true
@@ -172,13 +194,13 @@ func (s *ModuleService) Create(req dto.CreateModuleRequest) (*models.Module, err
 		ModuleTitle:       req.ModuleTitle,
 		ModuleDescription: req.ModuleDescription,
 		SequenceNo:        req.SequenceNo,
+		DurationMinutes:   req.DurationMinutes,
 		DueDays:           req.DueDays,
 		IsActive:          isActive,
 	}
 
 	return s.moduleRepo.Create(&module)
 }
-
 func (s *ModuleService) FindAll() ([]models.Module, error) {
 	return s.moduleRepo.FindAll()
 }
@@ -208,6 +230,8 @@ func (s *ModuleService) Update(id uint, req dto.UpdateModuleRequest) (*models.Mo
 		return nil, errors.New("module not found")
 	}
 
+	targetCourseID := module.CourseID
+
 	if req.CourseID != nil {
 		course, err := s.courseRepo.FindByID(*req.CourseID)
 		if err != nil {
@@ -217,19 +241,60 @@ func (s *ModuleService) Update(id uint, req dto.UpdateModuleRequest) (*models.Mo
 			return nil, errors.New("course not found")
 		}
 
+		targetCourseID = *req.CourseID
+	}
+
+	targetDuration := module.DurationMinutes
+
+	if req.DurationMinutes != nil {
+		if *req.DurationMinutes == 0 {
+			return nil, errors.New("module duration minutes must be greater than 0")
+		}
+
+		targetDuration = *req.DurationMinutes
+	}
+
+	course, err := s.courseRepo.FindByID(targetCourseID)
+	if err != nil {
+		return nil, err
+	}
+	if course == nil {
+		return nil, errors.New("course not found")
+	}
+
+	existingDuration, err := s.moduleRepo.SumDurationByCourseIDExcludingModule(targetCourseID, module.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	newTotalDuration := existingDuration + targetDuration
+
+	if newTotalDuration > course.TotalDurationMinutes {
+		return nil, errors.New("total module duration cannot exceed course total duration")
+	}
+
+	if req.CourseID != nil {
 		module.CourseID = *req.CourseID
 	}
 
 	if req.ModuleTitle != nil {
-		module.ModuleTitle = *req.ModuleTitle
+		title := strings.TrimSpace(*req.ModuleTitle)
+		if title == "" {
+			return nil, errors.New("module title cannot be empty")
+		}
+		module.ModuleTitle = title
 	}
 
 	if req.ModuleDescription != nil {
-		module.ModuleDescription = *req.ModuleDescription
+		module.ModuleDescription = strings.TrimSpace(*req.ModuleDescription)
 	}
 
 	if req.SequenceNo != nil {
 		module.SequenceNo = *req.SequenceNo
+	}
+
+	if req.DurationMinutes != nil {
+		module.DurationMinutes = *req.DurationMinutes
 	}
 
 	if req.DueDays != nil {
@@ -379,8 +444,6 @@ func (s *ModuleService) UploadModuleVideo(
 
 	return createdVideo, nil
 }
-
-
 
 func (s *ModuleService) GetModuleVideo(
 	ctx context.Context,

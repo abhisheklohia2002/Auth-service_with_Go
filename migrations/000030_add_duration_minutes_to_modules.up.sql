@@ -1,0 +1,2 @@
+ALTER TABLE modules
+ADD COLUMN duration_minutes INTEGER NOT NULL DEFAULT 0;
