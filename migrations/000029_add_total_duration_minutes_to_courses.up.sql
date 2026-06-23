@@ -1,0 +1,2 @@
+ALTER TABLE courses
+ADD COLUMN total_duration_minutes INTEGER NOT NULL DEFAULT 0;

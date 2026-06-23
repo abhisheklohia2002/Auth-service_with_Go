@@ -192,7 +192,7 @@ func main() {
 	roleService := services_role.NewRoleService(roleModuleRepo)
 	roleHandler := handlers_role.NewRoleHandler(roleService)
 
-	courseService := services_course.NewCourseService(courseRepo)
+	courseService := services_course.NewCourseService(courseRepo, moduleRepo)
 	courseHandler := handlers_course.NewCourseHandler(courseService)
 	cld := config.NewCloudinary()
 	fileUploader := storage.NewCloudinaryUploader(cld)

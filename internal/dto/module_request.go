@@ -6,6 +6,7 @@ type CreateModuleRequest struct {
 	ModuleDescription string `json:"module_description"`
 	SequenceNo        int    `json:"sequence_no" binding:"required"`
 	DueDays           int    `json:"due_days"`
+	DurationMinutes   uint   `json:"duration_minutes" binding:"required"`
 	IsActive          *bool  `json:"is_active"`
 }
 
@@ -14,6 +15,7 @@ type UpdateModuleRequest struct {
 	ModuleTitle       *string `json:"module_title"`
 	ModuleDescription *string `json:"module_description"`
 	SequenceNo        *int    `json:"sequence_no"`
+	DurationMinutes   *uint   `json:"duration_minutes"`
 	DueDays           *int    `json:"due_days"`
 	IsActive          *bool   `json:"is_active"`
 }
