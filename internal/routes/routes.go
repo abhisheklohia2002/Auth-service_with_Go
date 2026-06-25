@@ -503,6 +503,8 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 		moduleDocuments.DELETE("/:documentId", moduleHandler.DeleteByIdDocument)
 		moduleDocuments.POST("/:moduleId/video", moduleHandler.UploadModuleVideo)
 		moduleDocuments.GET("/:moduleId/video", moduleHandler.GetModuleVideo)
+		moduleDocuments.GET("/video-upload-tasks/:taskId", moduleHandler.GetVideoUploadTaskStatus)
+		moduleDocuments.GET("/pdf-upload-tasks/:taskId", moduleHandler.GetPDFUploadTaskStatus)
 	}
 
 	departments := api.Group("/departments")

@@ -1,9 +1,14 @@
 package handlers_module
 
 import (
+	"context"
 	"log"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	"example.com/m/internal/dto"
@@ -11,15 +16,62 @@ import (
 	services_module "example.com/m/internal/services/module"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
+
+type VideoUploadStatus string
+
+const (
+	VideoUploadQueued     VideoUploadStatus = "queued"
+	VideoUploadProcessing VideoUploadStatus = "processing"
+	VideoUploadCompleted  VideoUploadStatus = "completed"
+	VideoUploadFailed     VideoUploadStatus = "failed"
+)
+
+type VideoUploadTask struct {
+	TaskID    string            `json:"task_id"`
+	Status    VideoUploadStatus `json:"status"`
+	Progress  int               `json:"progress"`
+	Message   string            `json:"message"`
+	Error     string            `json:"error,omitempty"`
+	Video     any               `json:"video,omitempty"`
+	CreatedAt time.Time         `json:"created_at"`
+	UpdatedAt time.Time         `json:"updated_at"`
+}
+
+type PDFUploadStatus string
+
+const (
+	PDFUploadQueued     PDFUploadStatus = "queued"
+	PDFUploadProcessing PDFUploadStatus = "processing"
+	PDFUploadCompleted  PDFUploadStatus = "completed"
+	PDFUploadFailed     PDFUploadStatus = "failed"
+)
+
+type PDFUploadTask struct {
+	TaskID    string          `json:"task_id"`
+	Status    PDFUploadStatus `json:"status"`
+	Progress  int             `json:"progress"`
+	Message   string          `json:"message"`
+	Error     string          `json:"error,omitempty"`
+	Document  any             `json:"document,omitempty"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
+}
 
 type ModuleHandler struct {
 	moduleService *services_module.ModuleService
+	videoTasks    map[string]*VideoUploadTask
+	videoTaskMu   sync.RWMutex
+	pdfTasks      map[string]*PDFUploadTask
+	pdfTaskMu     sync.RWMutex
 }
 
 func NewModuleHandler(moduleService *services_module.ModuleService) *ModuleHandler {
 	return &ModuleHandler{
 		moduleService: moduleService,
+		videoTasks:    make(map[string]*VideoUploadTask),
+		pdfTasks:      make(map[string]*PDFUploadTask),
 	}
 }
 
@@ -173,59 +225,71 @@ func (ctrl *ModuleHandler) UploadPDF(c *gin.Context) {
 		return
 	}
 
-	file, err := fileHeader.Open()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Unable to open uploaded file"})
-		return
-	}
-	defer file.Close()
-
 	thumbnailHeader, err := c.FormFile("thumbnail")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Thumbnail image is required"})
 		return
 	}
 
-	thumbnailFile, err := thumbnailHeader.Open()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Unable to open thumbnail image"})
-		return
-	}
-	defer thumbnailFile.Close()
-
 	title := c.PostForm("title")
 	publicId := c.PostForm("publicId")
 	oldThumbnailPublicID := c.PostForm("oldThumbnailPublicId")
 
-	document, err := ctrl.moduleService.UploadPDF(
-		c.Request.Context(),
-		uint(moduleID64),
-		title,
-		file,
-		fileHeader,
-		publicId,
-		thumbnailFile,
-		thumbnailHeader,
-		oldThumbnailPublicID,
-	)
+	taskID := uuid.NewString()
 
-	if err != nil {
-		status := http.StatusInternalServerError
-
-		switch err.Error() {
-		case "module not found", "document not found":
-			status = http.StatusNotFound
-		case "only PDF files are allowed", "PDF size must be less than 25MB":
-			status = http.StatusBadRequest
-		}
-
-		c.JSON(status, gin.H{"message": err.Error()})
+	tempDir := "./tmp/module-pdfs"
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to create temp directory"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message":  "PDF uploaded successfully",
-		"document": document,
+	pdfTempPath := filepath.Join(tempDir, taskID+"_pdf_"+filepath.Base(fileHeader.Filename))
+	thumbnailTempPath := filepath.Join(tempDir, taskID+"_thumb_"+filepath.Base(thumbnailHeader.Filename))
+
+	if err := c.SaveUploadedFile(fileHeader, pdfTempPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to save PDF temporarily"})
+		return
+	}
+
+	if err := c.SaveUploadedFile(thumbnailHeader, thumbnailTempPath); err != nil {
+		_ = os.Remove(pdfTempPath)
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to save thumbnail temporarily"})
+		return
+	}
+
+	now := time.Now()
+
+	task := &PDFUploadTask{
+		TaskID:    taskID,
+		Status:    PDFUploadQueued,
+		Progress:  0,
+		Message:   "PDF upload accepted",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	ctrl.pdfTaskMu.Lock()
+	ctrl.pdfTasks[taskID] = task
+	ctrl.pdfTaskMu.Unlock()
+
+	go ctrl.processPDFUpload(
+		taskID,
+		pdfTempPath,
+		fileHeader.Filename,
+		fileHeader.Size,
+		thumbnailTempPath,
+		thumbnailHeader.Filename,
+		thumbnailHeader.Size,
+		uint(moduleID64),
+		title,
+		publicId,
+		oldThumbnailPublicID,
+	)
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"message": "PDF upload accepted",
+		"task_id": taskID,
+		"status":  "queued",
 	})
 }
 
@@ -282,7 +346,6 @@ func (ctrl *ModuleHandler) DeleteByIdDocument(c *gin.Context) {
 }
 
 func (ctrl *ModuleHandler) UploadModuleVideo(c *gin.Context) {
-	log.Printf("hi I am Running")
 	moduleIDParam := c.Param("moduleId")
 
 	moduleID64, err := strconv.ParseUint(moduleIDParam, 10, 64)
@@ -298,57 +361,61 @@ func (ctrl *ModuleHandler) UploadModuleVideo(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid course id"})
 		return
 	}
-	start := time.Now()
+
 	videoHeader, err := c.FormFile("video")
-	log.Printf("FormFile took: %v", time.Since(start))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Video file is required"})
 		return
 	}
-	openStart := time.Now()
-	videoFile, err := videoHeader.Open()
-	log.Printf("Open file took: %v", time.Since(openStart))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Unable to open video file"})
-		return
-	}
-	defer videoFile.Close()
 
 	title := c.PostForm("title")
 	oldVideoPublicID := c.PostForm("oldVideoPublicId")
-	uploadStart := time.Now()
-	video, err := ctrl.moduleService.UploadModuleVideo(
-		c.Request.Context(),
-		uint(courseID64),
-		uint(moduleID64),
-		title,
-		videoFile,
-		videoHeader,
-		oldVideoPublicID,
-	)
 
-	log.Printf("Service upload took: %v", time.Since(uploadStart))
+	taskID := uuid.NewString()
 
-	log.Printf("Total video request took: %v", time.Since(start))
-	if err != nil {
-		status := http.StatusInternalServerError
-
-		switch err.Error() {
-		case "module not found":
-			status = http.StatusNotFound
-		case "module does not belong to course",
-			"only MP4, MOV, WEBM, or MKV video files are allowed",
-			"video size must be less than 100MB":
-			status = http.StatusBadRequest
-		}
-
-		c.JSON(status, gin.H{"message": err.Error()})
+	tempDir := "./tmp/module-videos"
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to create temp directory"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "Video uploaded successfully",
-		"video":   video,
+	tempPath := filepath.Join(tempDir, taskID+"_"+filepath.Base(videoHeader.Filename))
+
+	if err := c.SaveUploadedFile(videoHeader, tempPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to save video temporarily"})
+		return
+	}
+
+	now := time.Now()
+
+	task := &VideoUploadTask{
+		TaskID:    taskID,
+		Status:    VideoUploadQueued,
+		Progress:  0,
+		Message:   "Video upload accepted",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	ctrl.videoTaskMu.Lock()
+	ctrl.videoTasks[taskID] = task
+	ctrl.videoTaskMu.Unlock()
+
+	go ctrl.processModuleVideoUpload(
+		taskID,
+		tempPath,
+		videoHeader.Filename,
+		videoHeader.Size,
+		uint(courseID64),
+		uint(moduleID64),
+		title,
+		oldVideoPublicID,
+	)
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"message": "Video upload accepted",
+		"task_id": taskID,
+		"status":  VideoUploadQueued,
 	})
 }
 
@@ -380,4 +447,209 @@ func (ctrl *ModuleHandler) GetModuleVideo(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"video": video,
 	})
+}
+
+func (ctrl *ModuleHandler) processModuleVideoUpload(
+	taskID string,
+	tempPath string,
+	originalFileName string,
+	fileSize int64,
+	courseID uint,
+	moduleID uint,
+	title string,
+	oldVideoPublicID string,
+) {
+	defer func() {
+		if err := os.Remove(tempPath); err != nil {
+			log.Printf("failed to remove temp video file: %v", err)
+		}
+	}()
+
+	ctrl.updateVideoTask(taskID, VideoUploadProcessing, 10, "Processing video upload", "", nil)
+
+	file, err := os.Open(tempPath)
+	if err != nil {
+		ctrl.updateVideoTask(taskID, VideoUploadFailed, 10, "Failed to open temp video", err.Error(), nil)
+		return
+	}
+	defer file.Close()
+
+	fileHeader := &multipart.FileHeader{
+		Filename: originalFileName,
+		Size:     fileSize,
+	}
+
+	ctrl.updateVideoTask(taskID, VideoUploadProcessing, 35, "Uploading video to storage", "", nil)
+
+	video, err := ctrl.moduleService.UploadModuleVideo(
+		context.Background(),
+		courseID,
+		moduleID,
+		title,
+		file,
+		fileHeader,
+		oldVideoPublicID,
+	)
+
+	if err != nil {
+		ctrl.updateVideoTask(taskID, VideoUploadFailed, 70, "Video upload failed", err.Error(), nil)
+		return
+	}
+
+	ctrl.updateVideoTask(taskID, VideoUploadCompleted, 100, "Video uploaded successfully", "", video)
+}
+
+func (ctrl *ModuleHandler) updateVideoTask(
+	taskID string,
+	status VideoUploadStatus,
+	progress int,
+	message string,
+	errorMessage string,
+	video any,
+) {
+	ctrl.videoTaskMu.Lock()
+	defer ctrl.videoTaskMu.Unlock()
+
+	task, ok := ctrl.videoTasks[taskID]
+	if !ok {
+		return
+	}
+
+	task.Status = status
+	task.Progress = progress
+	task.Message = message
+	task.Error = errorMessage
+	task.UpdatedAt = time.Now()
+
+	if video != nil {
+		task.Video = video
+	}
+}
+
+func (ctrl *ModuleHandler) GetVideoUploadTaskStatus(c *gin.Context) {
+	taskID := c.Param("taskId")
+
+	ctrl.videoTaskMu.RLock()
+	task, ok := ctrl.videoTasks[taskID]
+	ctrl.videoTaskMu.RUnlock()
+
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Upload task not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, task)
+}
+
+func (ctrl *ModuleHandler) processPDFUpload(
+	taskID string,
+	pdfTempPath string,
+	pdfFileName string,
+	pdfSize int64,
+	thumbnailTempPath string,
+	thumbnailFileName string,
+	thumbnailSize int64,
+	moduleID uint,
+	title string,
+	publicId string,
+	oldThumbnailPublicID string,
+) {
+	defer func() {
+		if err := os.Remove(pdfTempPath); err != nil {
+			log.Printf("failed to remove temp PDF file: %v", err)
+		}
+
+		if err := os.Remove(thumbnailTempPath); err != nil {
+			log.Printf("failed to remove temp thumbnail file: %v", err)
+		}
+	}()
+
+	ctrl.updatePDFTask(taskID, PDFUploadProcessing, 10, "Processing PDF upload", "", nil)
+
+	pdfFile, err := os.Open(pdfTempPath)
+	if err != nil {
+		ctrl.updatePDFTask(taskID, PDFUploadFailed, 10, "Failed to open temp PDF", err.Error(), nil)
+		return
+	}
+	defer pdfFile.Close()
+
+	thumbnailFile, err := os.Open(thumbnailTempPath)
+	if err != nil {
+		ctrl.updatePDFTask(taskID, PDFUploadFailed, 10, "Failed to open temp thumbnail", err.Error(), nil)
+		return
+	}
+	defer thumbnailFile.Close()
+
+	pdfHeader := &multipart.FileHeader{
+		Filename: pdfFileName,
+		Size:     pdfSize,
+	}
+
+	thumbnailHeader := &multipart.FileHeader{
+		Filename: thumbnailFileName,
+		Size:     thumbnailSize,
+	}
+
+	ctrl.updatePDFTask(taskID, PDFUploadProcessing, 35, "Uploading PDF to storage", "", nil)
+
+	document, err := ctrl.moduleService.UploadPDF(
+		context.Background(),
+		moduleID,
+		title,
+		pdfFile,
+		pdfHeader,
+		publicId,
+		thumbnailFile,
+		thumbnailHeader,
+		oldThumbnailPublicID,
+	)
+
+	if err != nil {
+		ctrl.updatePDFTask(taskID, PDFUploadFailed, 70, "PDF upload failed", err.Error(), nil)
+		return
+	}
+
+	ctrl.updatePDFTask(taskID, PDFUploadCompleted, 100, "PDF uploaded successfully", "", document)
+}
+
+func (ctrl *ModuleHandler) updatePDFTask(
+	taskID string,
+	status PDFUploadStatus,
+	progress int,
+	message string,
+	errorMessage string,
+	document any,
+) {
+	ctrl.pdfTaskMu.Lock()
+	defer ctrl.pdfTaskMu.Unlock()
+
+	task, ok := ctrl.pdfTasks[taskID]
+	if !ok {
+		return
+	}
+
+	task.Status = status
+	task.Progress = progress
+	task.Message = message
+	task.Error = errorMessage
+	task.UpdatedAt = time.Now()
+
+	if document != nil {
+		task.Document = document
+	}
+}
+
+func (ctrl *ModuleHandler) GetPDFUploadTaskStatus(c *gin.Context) {
+	taskID := c.Param("taskId")
+
+	ctrl.pdfTaskMu.RLock()
+	task, ok := ctrl.pdfTasks[taskID]
+	ctrl.pdfTaskMu.RUnlock()
+
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"message": "PDF upload task not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, task)
 }
