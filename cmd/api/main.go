@@ -12,6 +12,7 @@ import (
 	"example.com/m/internal/common/sse"
 	"example.com/m/internal/common/storage"
 	"example.com/m/internal/common/subscriber"
+	uploadtaskstore "example.com/m/internal/common/upload_task_store"
 	"example.com/m/internal/config"
 	"example.com/m/internal/db"
 
@@ -154,6 +155,8 @@ func main() {
 		log.Fatal("failed to initialize token service: ", err)
 	}
 
+	// redis := redisclient.NewRedisClient("localhost:6368", "", 0) //local
+	redis := redisclient.NewRedisClient()
 	userRepo := repositories.NewUserRepository(database)
 	roleRepo := repositories.NewRoleRepository(database)
 	departmentRepo := repositories_department.NewDepartmentRepository(database)
@@ -194,11 +197,13 @@ func main() {
 
 	cld := config.NewCloudinary()
 	fileUploader := storage.NewCloudinaryUploader(cld)
-	courseService := services_course.NewCourseService(courseRepo, moduleRepo,fileUploader)
+	courseService := services_course.NewCourseService(courseRepo, moduleRepo, fileUploader)
 	courseHandler := handlers_course.NewCourseHandler(courseService)
 	moduleDocumentRepo := repositories_moduleDocument.NewModuleDocumentRepository(database)
 	moduleService := services_module.NewModuleService(moduleRepo, courseRepo, fileUploader, moduleDocumentRepo)
-	moduleHandler := handlers_module.NewModuleHandler(moduleService)
+
+	uploadTaskStore := uploadtaskstore.NewUploadTaskStore(redis)
+	moduleHandler := handlers_module.NewModuleHandler(moduleService, uploadTaskStore)
 
 	trainingMappingService := services_trainingmapping.NewTrainingMappingService(
 		trainingMappingRepo,
@@ -339,9 +344,6 @@ func main() {
 	entityRepo := repositories_entity.NewEntityRepository(database)
 	entityService := services_entity.NewEntityService(entityRepo)
 	entityHandler := handlers_entity.NewEntityHandler(entityService)
-
-	// redis := redisclient.NewRedisClient("localhost:6368", "", 0) //local
-	redis := redisclient.NewRedisClient()
 
 	notificationRepo := repositoryNotification.NewNotificationRepository(database)
 	notificationPublisher := publisher.NewRedisNotificationPublisher(redis)

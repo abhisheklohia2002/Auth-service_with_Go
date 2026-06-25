@@ -8,9 +8,9 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"sync"
 	"time"
 
+	uploadtaskstore "example.com/m/internal/common/upload_task_store"
 	"example.com/m/internal/dto"
 	"example.com/m/internal/helper"
 	services_module "example.com/m/internal/services/module"
@@ -61,17 +61,16 @@ type PDFUploadTask struct {
 
 type ModuleHandler struct {
 	moduleService *services_module.ModuleService
-	videoTasks    map[string]*VideoUploadTask
-	videoTaskMu   sync.RWMutex
-	pdfTasks      map[string]*PDFUploadTask
-	pdfTaskMu     sync.RWMutex
+	uploadTasks   *uploadtaskstore.UploadTaskStore
 }
 
-func NewModuleHandler(moduleService *services_module.ModuleService) *ModuleHandler {
+func NewModuleHandler(
+	moduleService *services_module.ModuleService,
+	uploadTasks *uploadtaskstore.UploadTaskStore,
+) *ModuleHandler {
 	return &ModuleHandler{
 		moduleService: moduleService,
-		videoTasks:    make(map[string]*VideoUploadTask),
-		pdfTasks:      make(map[string]*PDFUploadTask),
+		uploadTasks:   uploadTasks,
 	}
 }
 
@@ -253,24 +252,28 @@ func (ctrl *ModuleHandler) UploadPDF(c *gin.Context) {
 
 	if err := c.SaveUploadedFile(thumbnailHeader, thumbnailTempPath); err != nil {
 		_ = os.Remove(pdfTempPath)
+
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to save thumbnail temporarily"})
 		return
 	}
 
-	now := time.Now()
-
-	task := &PDFUploadTask{
-		TaskID:    taskID,
-		Status:    PDFUploadQueued,
-		Progress:  0,
-		Message:   "PDF upload accepted",
-		CreatedAt: now,
-		UpdatedAt: now,
+	task := &uploadtaskstore.UploadTask{
+		TaskID:   taskID,
+		Kind:     "pdf",
+		Status:   uploadtaskstore.UploadQueued,
+		Progress: 0,
+		Message:  "PDF upload accepted",
 	}
 
-	ctrl.pdfTaskMu.Lock()
-	ctrl.pdfTasks[taskID] = task
-	ctrl.pdfTaskMu.Unlock()
+	if err := ctrl.uploadTasks.Create(c.Request.Context(), task); err != nil {
+		_ = os.Remove(pdfTempPath)
+		_ = os.Remove(thumbnailTempPath)
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to create PDF upload task",
+		})
+		return
+	}
 
 	go ctrl.processPDFUpload(
 		taskID,
@@ -289,7 +292,7 @@ func (ctrl *ModuleHandler) UploadPDF(c *gin.Context) {
 	c.JSON(http.StatusAccepted, gin.H{
 		"message": "PDF upload accepted",
 		"task_id": taskID,
-		"status":  "queued",
+		"status":  uploadtaskstore.UploadQueued,
 	})
 }
 
@@ -386,20 +389,22 @@ func (ctrl *ModuleHandler) UploadModuleVideo(c *gin.Context) {
 		return
 	}
 
-	now := time.Now()
-
-	task := &VideoUploadTask{
-		TaskID:    taskID,
-		Status:    VideoUploadQueued,
-		Progress:  0,
-		Message:   "Video upload accepted",
-		CreatedAt: now,
-		UpdatedAt: now,
+	task := &uploadtaskstore.UploadTask{
+		TaskID:   taskID,
+		Kind:     "video",
+		Status:   uploadtaskstore.UploadQueued,
+		Progress: 0,
+		Message:  "Video upload accepted",
 	}
 
-	ctrl.videoTaskMu.Lock()
-	ctrl.videoTasks[taskID] = task
-	ctrl.videoTaskMu.Unlock()
+	if err := ctrl.uploadTasks.Create(c.Request.Context(), task); err != nil {
+		_ = os.Remove(tempPath)
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to create video upload task",
+		})
+		return
+	}
 
 	go ctrl.processModuleVideoUpload(
 		taskID,
@@ -415,7 +420,7 @@ func (ctrl *ModuleHandler) UploadModuleVideo(c *gin.Context) {
 	c.JSON(http.StatusAccepted, gin.H{
 		"message": "Video upload accepted",
 		"task_id": taskID,
-		"status":  VideoUploadQueued,
+		"status":  uploadtaskstore.UploadQueued,
 	})
 }
 
@@ -459,17 +464,35 @@ func (ctrl *ModuleHandler) processModuleVideoUpload(
 	title string,
 	oldVideoPublicID string,
 ) {
+	ctx := context.Background()
+
 	defer func() {
 		if err := os.Remove(tempPath); err != nil {
 			log.Printf("failed to remove temp video file: %v", err)
 		}
 	}()
 
-	ctrl.updateVideoTask(taskID, VideoUploadProcessing, 10, "Processing video upload", "", nil)
+	ctrl.updateUploadTask(
+		ctx,
+		taskID,
+		uploadtaskstore.UploadProcessing,
+		10,
+		"Processing video upload",
+		"",
+		nil,
+	)
 
 	file, err := os.Open(tempPath)
 	if err != nil {
-		ctrl.updateVideoTask(taskID, VideoUploadFailed, 10, "Failed to open temp video", err.Error(), nil)
+		ctrl.updateUploadTask(
+			ctx,
+			taskID,
+			uploadtaskstore.UploadFailed,
+			100,
+			"Failed to open temp video",
+			err.Error(),
+			nil,
+		)
 		return
 	}
 	defer file.Close()
@@ -479,10 +502,18 @@ func (ctrl *ModuleHandler) processModuleVideoUpload(
 		Size:     fileSize,
 	}
 
-	ctrl.updateVideoTask(taskID, VideoUploadProcessing, 35, "Uploading video to storage", "", nil)
+	ctrl.updateUploadTask(
+		ctx,
+		taskID,
+		uploadtaskstore.UploadProcessing,
+		35,
+		"Uploading video to storage",
+		"",
+		nil,
+	)
 
 	video, err := ctrl.moduleService.UploadModuleVideo(
-		context.Background(),
+		ctx,
 		courseID,
 		moduleID,
 		title,
@@ -492,49 +523,44 @@ func (ctrl *ModuleHandler) processModuleVideoUpload(
 	)
 
 	if err != nil {
-		ctrl.updateVideoTask(taskID, VideoUploadFailed, 70, "Video upload failed", err.Error(), nil)
+		ctrl.updateUploadTask(
+			ctx,
+			taskID,
+			uploadtaskstore.UploadFailed,
+			100,
+			"Video upload failed",
+			err.Error(),
+			nil,
+		)
 		return
 	}
 
-	ctrl.updateVideoTask(taskID, VideoUploadCompleted, 100, "Video uploaded successfully", "", video)
-}
-
-func (ctrl *ModuleHandler) updateVideoTask(
-	taskID string,
-	status VideoUploadStatus,
-	progress int,
-	message string,
-	errorMessage string,
-	video any,
-) {
-	ctrl.videoTaskMu.Lock()
-	defer ctrl.videoTaskMu.Unlock()
-
-	task, ok := ctrl.videoTasks[taskID]
-	if !ok {
-		return
-	}
-
-	task.Status = status
-	task.Progress = progress
-	task.Message = message
-	task.Error = errorMessage
-	task.UpdatedAt = time.Now()
-
-	if video != nil {
-		task.Video = video
-	}
+	ctrl.updateUploadTask(
+		ctx,
+		taskID,
+		uploadtaskstore.UploadCompleted,
+		100,
+		"Video uploaded successfully",
+		"",
+		video,
+	)
 }
 
 func (ctrl *ModuleHandler) GetVideoUploadTaskStatus(c *gin.Context) {
 	taskID := c.Param("taskId")
 
-	ctrl.videoTaskMu.RLock()
-	task, ok := ctrl.videoTasks[taskID]
-	ctrl.videoTaskMu.RUnlock()
+	task, err := ctrl.uploadTasks.Get(c.Request.Context(), taskID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to fetch video upload task",
+		})
+		return
+	}
 
-	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"message": "Upload task not found"})
+	if task == nil || task.Kind != "video" {
+		c.JSON(http.StatusNotFound, gin.H{
+			"message": "Video upload task not found",
+		})
 		return
 	}
 
@@ -554,6 +580,8 @@ func (ctrl *ModuleHandler) processPDFUpload(
 	publicId string,
 	oldThumbnailPublicID string,
 ) {
+	ctx := context.Background()
+
 	defer func() {
 		if err := os.Remove(pdfTempPath); err != nil {
 			log.Printf("failed to remove temp PDF file: %v", err)
@@ -564,18 +592,42 @@ func (ctrl *ModuleHandler) processPDFUpload(
 		}
 	}()
 
-	ctrl.updatePDFTask(taskID, PDFUploadProcessing, 10, "Processing PDF upload", "", nil)
+	ctrl.updateUploadTask(
+		ctx,
+		taskID,
+		uploadtaskstore.UploadProcessing,
+		10,
+		"Processing PDF upload",
+		"",
+		nil,
+	)
 
 	pdfFile, err := os.Open(pdfTempPath)
 	if err != nil {
-		ctrl.updatePDFTask(taskID, PDFUploadFailed, 10, "Failed to open temp PDF", err.Error(), nil)
+		ctrl.updateUploadTask(
+			ctx,
+			taskID,
+			uploadtaskstore.UploadFailed,
+			100,
+			"Failed to open temp PDF",
+			err.Error(),
+			nil,
+		)
 		return
 	}
 	defer pdfFile.Close()
 
 	thumbnailFile, err := os.Open(thumbnailTempPath)
 	if err != nil {
-		ctrl.updatePDFTask(taskID, PDFUploadFailed, 10, "Failed to open temp thumbnail", err.Error(), nil)
+		ctrl.updateUploadTask(
+			ctx,
+			taskID,
+			uploadtaskstore.UploadFailed,
+			100,
+			"Failed to open temp thumbnail",
+			err.Error(),
+			nil,
+		)
 		return
 	}
 	defer thumbnailFile.Close()
@@ -590,10 +642,18 @@ func (ctrl *ModuleHandler) processPDFUpload(
 		Size:     thumbnailSize,
 	}
 
-	ctrl.updatePDFTask(taskID, PDFUploadProcessing, 35, "Uploading PDF to storage", "", nil)
+	ctrl.updateUploadTask(
+		ctx,
+		taskID,
+		uploadtaskstore.UploadProcessing,
+		35,
+		"Uploading PDF and thumbnail to storage",
+		"",
+		nil,
+	)
 
 	document, err := ctrl.moduleService.UploadPDF(
-		context.Background(),
+		ctx,
 		moduleID,
 		title,
 		pdfFile,
@@ -605,51 +665,68 @@ func (ctrl *ModuleHandler) processPDFUpload(
 	)
 
 	if err != nil {
-		ctrl.updatePDFTask(taskID, PDFUploadFailed, 70, "PDF upload failed", err.Error(), nil)
+		ctrl.updateUploadTask(
+			ctx,
+			taskID,
+			uploadtaskstore.UploadFailed,
+			100,
+			"PDF upload failed",
+			err.Error(),
+			nil,
+		)
 		return
 	}
 
-	ctrl.updatePDFTask(taskID, PDFUploadCompleted, 100, "PDF uploaded successfully", "", document)
-}
-
-func (ctrl *ModuleHandler) updatePDFTask(
-	taskID string,
-	status PDFUploadStatus,
-	progress int,
-	message string,
-	errorMessage string,
-	document any,
-) {
-	ctrl.pdfTaskMu.Lock()
-	defer ctrl.pdfTaskMu.Unlock()
-
-	task, ok := ctrl.pdfTasks[taskID]
-	if !ok {
-		return
-	}
-
-	task.Status = status
-	task.Progress = progress
-	task.Message = message
-	task.Error = errorMessage
-	task.UpdatedAt = time.Now()
-
-	if document != nil {
-		task.Document = document
-	}
+	ctrl.updateUploadTask(
+		ctx,
+		taskID,
+		uploadtaskstore.UploadCompleted,
+		100,
+		"PDF uploaded successfully",
+		"",
+		document,
+	)
 }
 
 func (ctrl *ModuleHandler) GetPDFUploadTaskStatus(c *gin.Context) {
 	taskID := c.Param("taskId")
 
-	ctrl.pdfTaskMu.RLock()
-	task, ok := ctrl.pdfTasks[taskID]
-	ctrl.pdfTaskMu.RUnlock()
+	task, err := ctrl.uploadTasks.Get(c.Request.Context(), taskID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to fetch PDF upload task",
+		})
+		return
+	}
 
-	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"message": "PDF upload task not found"})
+	if task == nil || task.Kind != "pdf" {
+		c.JSON(http.StatusNotFound, gin.H{
+			"message": "PDF upload task not found",
+		})
 		return
 	}
 
 	c.JSON(http.StatusOK, task)
+}
+
+func (ctrl *ModuleHandler) updateUploadTask(
+	ctx context.Context,
+	taskID string,
+	status uploadtaskstore.UploadTaskStatus,
+	progress int,
+	message string,
+	errorMessage string,
+	result any,
+) {
+	if err := ctrl.uploadTasks.Update(
+		ctx,
+		taskID,
+		status,
+		progress,
+		message,
+		errorMessage,
+		result,
+	); err != nil {
+		log.Printf("failed to update upload task %s: %v", taskID, err)
+	}
 }
