@@ -391,7 +391,7 @@ func main() {
 		notificationHandler,
 	)
 
-	router.GET("/health", func(c *gin.Context) {
+	router.GET("/health-check", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status": "ok",
 		})
