@@ -186,6 +186,11 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			authMiddleware.IsAuthMiddleware(),
 			moduleProgressHandler.UpdateStatus,
 		)
+		moduleProgress.PATCH(
+			"/:id/video-progress",
+			authMiddleware.IsAuthMiddleware(),
+			moduleProgressHandler.UpdateVideoProgress,
+		)
 	}
 
 	modules := api.Group("/modules")

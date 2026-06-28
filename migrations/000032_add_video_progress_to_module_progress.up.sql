@@ -1,0 +1,5 @@
+ALTER TABLE module_progresses
+ADD COLUMN IF NOT EXISTS video_duration_seconds INT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS video_watched_seconds INT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS video_watched_percent INT NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS video_completed_at TIMESTAMP NULL;

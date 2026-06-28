@@ -69,3 +69,33 @@ func (h *ModuleProgressHandler) UpdateStatus(c *gin.Context) {
 		"data":    progress,
 	})
 }
+
+func (h *ModuleProgressHandler) UpdateVideoProgress(c *gin.Context) {
+	progressID, ok := helper.ParseUintParam(c, "id")
+	if !ok {
+		return
+	}
+
+	var req dto.UpdateVideoProgressRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "failed to bind request",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	progress, err := h.moduleProgressService.UpdateVideoProgress(progressID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "video progress updated successfully",
+		"data":    progress,
+	})
+}

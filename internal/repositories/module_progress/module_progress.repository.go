@@ -77,12 +77,26 @@ func (r *ModuleProgressRepository) FindByID(id uint) (*models.ModuleProgress, er
 }
 
 func (r *ModuleProgressRepository) Update(progress *models.ModuleProgress) (*models.ModuleProgress, error) {
-	if err := r.db.Save(progress).Error; err != nil {
+	err := r.db.
+		Model(&models.ModuleProgress{}).
+		Where("id = ?", progress.ID).
+		Updates(map[string]interface{}{
+			"status":                 progress.Status,
+			"started_at":             progress.StartedAt,
+			"completed_at":           progress.CompletedAt,
+			"video_duration_seconds": progress.VideoDurationSeconds,
+			"video_watched_seconds":  progress.VideoWatchedSeconds,
+			"video_watched_percent":  progress.VideoWatchedPercent,
+			"video_completed_at":     progress.VideoCompletedAt,
+		}).
+		Error
+
+	if err != nil {
 		return nil, err
 	}
 
 	var updated models.ModuleProgress
-	err := r.db.
+	err = r.db.
 		Preload("Module").
 		Preload("Assignment").
 		First(&updated, progress.ID).
@@ -153,15 +167,18 @@ func (r *ModuleProgressRepository) FindByUserAndModule(userID uint, moduleID uin
 	return &progress, nil
 }
 
-
 func (r *ModuleProgressRepository) ResetByAssignmentID(assignmentID uint) error {
 	return r.db.
 		Model(&models.ModuleProgress{}).
 		Where("assignment_id = ?", assignmentID).
 		Updates(map[string]interface{}{
-			"status":       "pending",
-			"started_at":   nil,
-			"completed_at": nil,
+			"status":                 "pending",
+			"started_at":             nil,
+			"completed_at":           nil,
+			"video_duration_seconds": 0,
+			"video_watched_seconds":  0,
+			"video_watched_percent":  0,
+			"video_completed_at":     nil,
 		}).
 		Error
 }

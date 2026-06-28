@@ -96,3 +96,15 @@ func (r *ModuleDocumentRepository) DeleteDocumentByPublicId(publicID string) err
 		Delete(&models.ModuleDocument{}).
 		Error
 }
+
+func (r *ModuleDocumentRepository) ExistsByModuleID(moduleID uint) (bool, error) {
+	var count int64
+
+	err := r.db.
+		Model(&models.ModuleVideo{}).
+		Where("module_id = ? AND video_url <> ''", moduleID).
+		Count(&count).
+		Error
+
+	return count > 0, err
+}

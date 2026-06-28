@@ -218,6 +218,7 @@ func main() {
 	moduleProgressService := services_moduleprogress.NewModuleProgressService(
 		moduleProgressRepo,
 		trainingAssignmentRepo,
+		moduleDocumentRepo,
 	)
 
 	moduleProgressHandler := handlers_moduleprogress.NewModuleProgressHandler(
