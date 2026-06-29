@@ -1,1 +1,0 @@
-DROP TABLE IF EXISTS assessment_attempt_answers CASCADE;

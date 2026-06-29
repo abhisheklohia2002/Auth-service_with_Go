@@ -7,6 +7,8 @@ import (
 	"time"
 
 	// automigration "example.com/m/internal/Automigration"
+
+	// automigration "example.com/m/internal/Automigration"
 	automigration "example.com/m/internal/Automigration"
 	"example.com/m/internal/common/publisher"
 	redisclient "example.com/m/internal/common/redis"

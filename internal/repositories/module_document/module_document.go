@@ -60,7 +60,6 @@ func (r *ModuleDocumentRepository) FindByModuleID(moduleID uint) ([]models.Modul
 	err := r.db.
 		Where("module_id = ? AND is_active = ?", moduleID, true).
 		Order("created_at ASC").
-		Preload("ModuleVideos", "is_active = ?", true).
 		Find(&documents).
 		Error
 
