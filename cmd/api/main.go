@@ -7,9 +7,6 @@ import (
 	"time"
 
 	// automigration "example.com/m/internal/Automigration"
-
-	// automigration "example.com/m/internal/Automigration"
-	automigration "example.com/m/internal/Automigration"
 	"example.com/m/internal/common/publisher"
 	redisclient "example.com/m/internal/common/redis"
 	"example.com/m/internal/common/sse"
@@ -104,9 +101,9 @@ func main() {
 	// fmt.Printf("config: %+v\n", cfg)
 	database := db.SetupDB(cfg)
 
-	if err := automigration.RunAutoMigration(database, cfg.APP_ENV); err != nil {
-		log.Fatal("migration failed:", err)
-	}
+	// if err := automigration.RunAutoMigration(database, cfg.APP_ENV); err != nil {
+	// 	log.Fatal("migration failed:", err)
+	// }
 
 	seeders.SeedRoles(database)
 	seeders.SeedTestUsers(database)
