@@ -126,8 +126,6 @@ func (r *TrainingAssignmentRepository) Delete(id uint) error {
 	return r.db.Delete(&models.TrainingAssignment{}, id).Error
 }
 
-
-
 func (r *TrainingAssignmentRepository) FindDepartmentAssignments() ([]models.TrainingAssignment, error) {
 	var assignments []models.TrainingAssignment
 
@@ -136,6 +134,7 @@ func (r *TrainingAssignmentRepository) FindDepartmentAssignments() ([]models.Tra
 		Preload("Course").
 		Preload("Department").
 		Preload("AssignedByUser").
+		Preload("Department.Entity").
 		Where("assignment_source = ?", "department").
 		Order("id DESC").
 		Find(&assignments).Error

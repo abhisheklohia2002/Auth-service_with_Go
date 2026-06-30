@@ -168,7 +168,6 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler,
 			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)), trainingAssignmentHandler.AssignCourseToDepartment)
 		trainingAssignments.GET("/department",
 			authMiddleware.IsAuthMiddleware(string(enums.Admin), string(enums.Manager)),
-
 			trainingAssignmentHandler.FindDepartmentAssignments)
 	}
 
