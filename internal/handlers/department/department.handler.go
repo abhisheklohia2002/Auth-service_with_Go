@@ -128,3 +128,25 @@ func (h *DepartmentHandler) Delete(c *gin.Context) {
 		"message": "department deleted successfully",
 	})
 }
+
+func (h *DepartmentHandler) GetDepartmentsByEntityID(c *gin.Context) {
+	entityID, err := strconv.ParseUint(c.Param("entity_id"), 10, 64)
+	if err != nil || entityID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid entity id",
+		})
+		return
+	}
+
+	departments, err := h.service.GetDepartmentsByEntityID(uint(entityID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to fetch departments",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"departments": departments,
+	})
+}

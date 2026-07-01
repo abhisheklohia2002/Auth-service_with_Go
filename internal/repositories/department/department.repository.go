@@ -13,6 +13,7 @@ type DepartmentRepository interface {
 	GetAll() ([]models.Department, error)
 	Update(department *models.Department) error
 	Delete(id uint) error
+	GetDepartmentsByEntityID(entityID uint) ([]models.Department, error)
 	GetActiveUsers(departmentID uint) ([]models.User, error)
 	FindDepartmentsByIDs(ctx context.Context, ids []uint) ([]models.Department, error)
 }
@@ -77,6 +78,18 @@ func (r *departmentRepository) FindDepartmentsByIDs(
 	err := r.db.WithContext(ctx).
 		Where("id IN ?", ids).
 		Find(&departments).Error
+
+	return departments, err
+}
+
+func (r *departmentRepository) GetDepartmentsByEntityID(entityID uint) ([]models.Department, error) {
+	var departments []models.Department
+
+	err := r.db.
+		Where("entity_id = ? AND is_active = ?", entityID, true).
+		Order("name ASC").
+		Find(&departments).
+		Error
 
 	return departments, err
 }

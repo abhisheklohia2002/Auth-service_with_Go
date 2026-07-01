@@ -17,6 +17,7 @@ type DepartmentService interface {
 	GetAll() ([]models.Department, error)
 	Update(id uint, req dto.UpdateDepartmentRequest) (*models.Department, error)
 	Delete(id uint) error
+	GetDepartmentsByEntityID(entityID uint) ([]models.Department, error)
 }
 
 type departmentService struct {
@@ -99,4 +100,8 @@ func (s *departmentService) Update(id uint, req dto.UpdateDepartmentRequest) (*m
 
 func (s *departmentService) Delete(id uint) error {
 	return s.departmentRepo.Delete(id)
+}
+
+func (s *departmentService) GetDepartmentsByEntityID(entityID uint) ([]models.Department, error) {
+	return s.departmentRepo.GetDepartmentsByEntityID(entityID)
 }
