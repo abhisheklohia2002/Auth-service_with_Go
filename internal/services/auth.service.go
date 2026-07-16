@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/mail"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -250,7 +251,7 @@ func (s *AuthService) CreateUser(req models.RegisterRequest) (*models.User, erro
 	if err != nil {
 		return nil, err
 	}
-
+	cfg := os.Getenv("FRONTEND_URL")
 	body := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
@@ -316,7 +317,7 @@ style="margin-top:25px;border-collapse:collapse;border:1px solid #e5e7eb;">
 
 <div style="text-align:center;margin-top:35px;">
 
-<a href="https://your-lms-domain.com/login"
+<a href="%s/login"
 style="
 background:#2563eb;
 color:#ffffff;
@@ -361,6 +362,7 @@ Empowering Learning. Building Careers.
 		createdUser.EmployeeCode,
 		createdUser.Email,
 		req.Password,
+		cfg,
 	)
 
 	go func() {
