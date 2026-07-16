@@ -252,19 +252,110 @@ func (s *AuthService) CreateUser(req models.RegisterRequest) (*models.User, erro
 	}
 
 	body := fmt.Sprintf(`
-<h2>Welcome to TripXL</h2>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Welcome to LMS Portal</title>
+</head>
 
-<p>Hello %s,</p>
+<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;">
 
-<p>Your account has been created successfully.</p>
+<table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:40px 0;">
+<tr>
+<td align="center">
 
-<p><strong>Employee ID:</strong> %s</p>
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid #e5e7eb;">
 
-<p><strong>Email:</strong> %s</p>
+<tr>
+<td style="background:#2563eb;padding:25px;text-align:center;">
+<h1 style="margin:0;color:#ffffff;font-size:28px;">
+TripXL Learning Portal
+</h1>
+<p style="margin-top:8px;color:#dbeafe;font-size:15px;">
+Welcome to the team 🎉
+</p>
+</td>
+</tr>
 
-<p><strong>Password:</strong> %s</p>
+<tr>
+<td style="padding:35px;">
 
-<p>Please change your password after your first login.</p>
+<h2 style="margin-top:0;color:#111827;">
+Hello %s,
+</h2>
+
+<p style="color:#4b5563;font-size:15px;line-height:24px;">
+Your LMS account has been created successfully.
+You can now log in to the Learning Management System and begin accessing courses, training materials, assessments, and certifications.
+</p>
+
+<table width="100%%" cellpadding="10" cellspacing="0"
+style="margin-top:25px;border-collapse:collapse;border:1px solid #e5e7eb;">
+
+<tr style="background:#f9fafb;">
+<td width="35%%"><strong>Employee ID</strong></td>
+<td>%s</td>
+</tr>
+
+<tr>
+<td><strong>Email</strong></td>
+<td>%s</td>
+</tr>
+
+<tr style="background:#f9fafb;">
+<td><strong>Temporary Password</strong></td>
+<td>%s</td>
+</tr>
+
+</table>
+
+<p style="margin-top:30px;color:#ef4444;font-size:14px;">
+<strong>Important:</strong> For security reasons, please change your password immediately after your first login.
+</p>
+
+<div style="text-align:center;margin-top:35px;">
+
+<a href="https://your-lms-domain.com/login"
+style="
+background:#2563eb;
+color:#ffffff;
+padding:14px 30px;
+text-decoration:none;
+border-radius:6px;
+display:inline-block;
+font-weight:bold;
+">
+Login to LMS
+</a>
+
+</div>
+
+<p style="margin-top:35px;color:#6b7280;font-size:14px;line-height:22px;">
+If you have any questions or face any issues accessing your account,
+please contact your administrator.
+</p>
+
+</td>
+</tr>
+
+<tr>
+<td style="background:#f9fafb;padding:20px;text-align:center;color:#9ca3af;font-size:13px;">
+
+© 2026 TripXL Learning Portal<br>
+Empowering Learning. Building Careers.
+
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
 `,
 		createdUser.FullName,
 		createdUser.EmployeeCode,
