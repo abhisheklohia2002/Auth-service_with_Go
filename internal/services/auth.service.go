@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	email "example.com/m/internal/common/smtp"
 	"example.com/m/internal/config"
 	"example.com/m/internal/dto"
 	"example.com/m/internal/helper"
@@ -29,6 +30,7 @@ type AuthService struct {
 	tokenService   *TokenService
 	roleRepo       *repositories.RoleRepository
 	departmentRepo repositories_department.DepartmentRepository
+	email          *email.EmailService
 }
 type JWK struct {
 	Kty string `json:"kty"`
@@ -51,12 +53,15 @@ func NewAuthService(
 	tokenService *TokenService,
 	roleRepo *repositories.RoleRepository,
 	departmentRepo repositories_department.DepartmentRepository,
+	email *email.EmailService,
+
 ) *AuthService {
 	return &AuthService{
 		userRepo:       userRepo,
 		tokenService:   tokenService,
 		roleRepo:       roleRepo,
 		departmentRepo: departmentRepo,
+		email:          email,
 	}
 }
 
@@ -245,6 +250,40 @@ func (s *AuthService) CreateUser(req models.RegisterRequest) (*models.User, erro
 	if err != nil {
 		return nil, err
 	}
+
+	body := fmt.Sprintf(`
+<h2>Welcome to TripXL</h2>
+
+<p>Hello %s,</p>
+
+<p>Your account has been created successfully.</p>
+
+<p><strong>Employee ID:</strong> %s</p>
+
+<p><strong>Email:</strong> %s</p>
+
+<p><strong>Password:</strong> %s</p>
+
+<p>Please change your password after your first login.</p>
+`,
+		createdUser.FullName,
+		createdUser.EmployeeCode,
+		createdUser.Email,
+		req.Password,
+	)
+
+	go func() {
+		err := s.email.Send(
+			createdUser.Email,
+			"Welcome to TripXL",
+			body,
+		)
+
+		if err != nil {
+			// log the error
+			fmt.Println("failed to send email:", err)
+		}
+	}()
 
 	return &createdUser, nil
 }
