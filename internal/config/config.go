@@ -38,7 +38,12 @@ type Config struct {
 	CLOUDINARY_API_KEY    string
 	CLOUDINARY_API_SECRET string
 
-	APP_ENV string
+	APP_ENV        string
+	MAIL_HOST      string
+	SMTP_USERNAME  string
+	SMTP_PASSWORD  string
+	OPERATION_MAIL string
+	MAIL_PORT      string
 }
 
 func getEnv(key string, fallback string) string {
@@ -117,6 +122,11 @@ func LoadDotenv() Config {
 		CLOUDINARY_API_KEY:    getEnv("CLOUDINARY_API_KEY", ""),
 		CLOUDINARY_API_SECRET: getEnv("CLOUDINARY_API_SECRET", ""),
 
-		APP_ENV: getEnv("APP_ENV", ""),
+		APP_ENV:        getEnv("APP_ENV", ""),
+		MAIL_HOST:      getEnv("MAIL_HOST", "MAIL_HOST"),
+		SMTP_USERNAME:  getEnv("SMTP_USERNAME", "SMTP_USERNAME"),
+		SMTP_PASSWORD:  getEnv("SMTP_PASSWORD", "SMTP_PASSWORD"),
+		OPERATION_MAIL: getEnv("OPERATION_MAIL", "OPERATION_MAIL"),
+		MAIL_PORT:      getEnv("MAIL_PORT", "MAIL_PORT"),
 	}
 }

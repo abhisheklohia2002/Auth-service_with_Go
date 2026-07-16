@@ -9,6 +9,7 @@ import (
 	// automigration "example.com/m/internal/Automigration"
 	"example.com/m/internal/common/publisher"
 	redisclient "example.com/m/internal/common/redis"
+	email "example.com/m/internal/common/smtp"
 	"example.com/m/internal/common/sse"
 	"example.com/m/internal/common/storage"
 	"example.com/m/internal/common/subscriber"
@@ -157,6 +158,16 @@ func main() {
 
 	// redis := redisclient.NewRedisClient("localhost:6368", "", 0) //local
 	redis := redisclient.NewRedisClient()
+	email, err := email.NewEmailService(
+		"ap-south-1",
+		cfg.SMTP_USERNAME,
+		cfg.SMTP_PASSWORD,
+		cfg.OPERATION_MAIL,
+	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 	userRepo := repositories.NewUserRepository(database)
 	roleRepo := repositories.NewRoleRepository(database)
 	departmentRepo := repositories_department.NewDepartmentRepository(database)
@@ -189,7 +200,7 @@ func main() {
 
 	roleModuleRepo := repositories_role.NewRoleRepository(database)
 
-	authService := services.NewAuthService(userRepo, tokenService, roleRepo, departmentRepo)
+	authService := services.NewAuthService(userRepo, tokenService, roleRepo, departmentRepo, email)
 	authHandler := handlers.NewAuthHandler(authService, tokenService)
 
 	roleService := services_role.NewRoleService(roleModuleRepo)
