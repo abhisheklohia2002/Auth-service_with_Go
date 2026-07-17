@@ -93,6 +93,7 @@ func (s *AuthService) Register(req models.RegisterRequest) (models.AuthResponse,
 		DepartmentID: req.DepartmentID,
 	}
 
+	//create user
 	createdUser, err := s.userRepo.Create(&user)
 	if err != nil {
 		return models.AuthResponse{}, models.User{}, err
