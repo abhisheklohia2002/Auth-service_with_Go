@@ -45,8 +45,9 @@ type JWKS struct {
 	Keys []JWK `json:"keys"`
 }
 
-func (s *AuthService) UsersList(departmentId uint) ([]models.User, error) {
-	return s.userRepo.UsersList(departmentId)
+func (s *AuthService) UsersList(departmentId uint, page int, pageSize int) ([]models.User, int64, error) {
+	pagination := helper.NewPagination(page, pageSize)
+	return s.userRepo.UsersList(departmentId, pagination)
 }
 
 func NewAuthService(

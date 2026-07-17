@@ -55,33 +55,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 	setAuthCookies(c, tokens.AccessToken, tokens.RefreshToken)
 
-	// oneHour := 60 * 60
-	// oneYear := 365 * 24 * 60 * 60
-
-	// secure := os.Getenv("GIN_MODE") == "release"
-	// httpOnly := true
-	// c.SetSameSite(http.SameSiteNoneMode)
-
-	// c.SetCookie(
-	// 	"access_token",
-	// 	tokens.AccessToken,
-	// 	oneHour,
-	// 	"/",
-	// 	"",
-	// 	secure,
-	// 	httpOnly,
-	// )
-
-	// c.SetCookie(
-	// 	"refresh_token",
-	// 	tokens.RefreshToken,
-	// 	oneYear,
-	// 	"/",
-	// 	"",
-	// 	secure,
-	// 	httpOnly,
-	// )
-
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "register successful",
 		"user":    user,
@@ -123,34 +96,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 	setAuthCookies(c, tokens.AccessToken, tokens.RefreshToken)
 
-	// oneHour := 60
-	// oneYear := 365 * 24 * 60 * 60
-
-	// secure := os.Getenv("GIN_MODE") == "release"
-	// httpOnly := true
-
-	// c.SetSameSite(http.SameSiteNoneMode)
-
-	// c.SetCookie(
-	// 	"access_token",
-	// 	tokens.AccessToken,
-	// 	oneHour,
-	// 	"/",
-	// 	"",
-	// 	secure,
-	// 	httpOnly,
-	// )
-
-	// c.SetCookie(
-	// 	"refresh_token",
-	// 	tokens.RefreshToken,
-	// 	oneYear,
-	// 	"/",
-	// 	"",
-	// 	secure,
-	// 	httpOnly,
-	// )
-
 	c.JSON(http.StatusOK, gin.H{
 		"message": "login successful",
 		"user":    existingUser,
@@ -160,6 +105,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) UsersList(c *gin.Context) {
 	departmentIDQuery := c.Query("department_id")
 	var departmentID uint
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
 
 	if departmentIDQuery != "" {
 		parsedDepartmentID, err := strconv.ParseUint(departmentIDQuery, 10, 64)
@@ -172,7 +119,8 @@ func (h *AuthHandler) UsersList(c *gin.Context) {
 
 		departmentID = uint(parsedDepartmentID)
 	}
-	users, err := h.authService.UsersList(departmentID)
+
+	users, total, err := h.authService.UsersList(departmentID, page, pageSize)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"error": "failed to fetch users",
@@ -180,9 +128,14 @@ func (h *AuthHandler) UsersList(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"message": "users fetched successfully",
 		"data":    users,
+		"pagination": gin.H{
+			"page":     page,
+			"pageSize": pageSize,
+			"total":    total,
+		},
 	})
 }
 
