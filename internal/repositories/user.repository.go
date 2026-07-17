@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"example.com/m/internal/helper"
 	"example.com/m/internal/models"
 	"gorm.io/gorm"
 )
@@ -28,23 +29,36 @@ func (r *UserRepository) Create(user *models.User) (models.User, error) {
 	return *user, nil
 }
 
-func (r *UserRepository) UsersList(departmentID uint) ([]models.User, error) {
-	var users []models.User
+func (r *UserRepository) UsersList(
+	departmentID uint,
+	pagination *helper.Pagination,
+) ([]models.User, int64, error) {
 
-	query := r.db.
-		Preload("Role").
-		Preload("Department")
+	var (
+		users []models.User
+		total int64
+	)
+
+	query := r.db.Model(&models.User{})
 
 	if departmentID != 0 {
 		query = query.Where("department_id = ?", departmentID)
 	}
 
-	err := query.Find(&users).Error
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := query.
+		Preload("Role").
+		Preload("Department").
+		Clauses(pagination).
+		Find(&users).Error
+
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return users, nil
+	return users, total, nil
 }
 
 func (r *UserRepository) DeleteUserById(id int) (models.User, error) {

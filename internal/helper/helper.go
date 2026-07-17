@@ -8,7 +8,14 @@ import (
 	"example.com/m/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+type Pagination struct {
+	page     int
+	pageSize int
+}
 
 func HasAudience(audiences jwt.ClaimStrings, target string) bool {
 	for _, aud := range audiences {
@@ -69,15 +76,12 @@ func IsEmptyRow(row []string) bool {
 	return true
 }
 
-
 func IsHeaderRow(name, email, employeeCode, password string) bool {
 	return strings.EqualFold(name, "Full Name") ||
 		strings.EqualFold(email, "Email") ||
 		strings.EqualFold(employeeCode, "Employee Code") ||
 		strings.EqualFold(password, "Password")
 }
-
-
 
 func GetEffectiveAssessmentRule(assessment *models.Assessment) (maxAttempts int, retakeAllowed bool, passingScore int) {
 	maxAttempts = 1
@@ -98,3 +102,35 @@ func GetEffectiveAssessmentRule(assessment *models.Assessment) (maxAttempts int,
 
 	return maxAttempts, retakeAllowed, passingScore
 }
+
+func NewPagination(page, pageSize int) *Pagination {
+	if page < 1 {
+		page = 1
+	}
+
+	if pageSize <= 0 {
+		pageSize = 10
+	}
+
+	return &Pagination{
+		page:     page,
+		pageSize: pageSize,
+	}
+}
+
+func (p *Pagination) GetPage() int {
+	return p.page
+}
+
+func (p *Pagination) GetPageSize() int {
+	return p.pageSize
+}
+
+func (p *Pagination) ModifyStatement(stmt *gorm.Statement) {
+	stmt.AddClause(clause.Limit{
+		Limit:  &p.pageSize,
+		Offset: (p.page - 1) * p.pageSize,
+	})
+}
+
+func (p *Pagination) Build(clause.Builder) {}
